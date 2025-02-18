@@ -15,7 +15,7 @@ app.get('/', (req, res) => {
 
 // Dummy API route
 app.get('/api/data', (req, res) => {
-    res.json({ message: 'Hello from the backend!' });
+    res.json({ message: 'Connected from the backend' });
 });
 
 app.listen(PORT, () => {
