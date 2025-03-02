@@ -50,3 +50,6 @@ android/app/google-services.json
 ios/Runner/GoogleService-Info.plist
 firebase.json
 macos/Runner/GoogleService-Info.plist
+
+#API Key
+college_service.dart
