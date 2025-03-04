@@ -1,10 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'budget_planner_screen.dart';
 
 class CollegeDetailsScreen extends StatelessWidget {
   final Map<String, dynamic> college;
 
   const CollegeDetailsScreen({super.key, required this.college});
+
+  //Make sure URLs start with 'http://' otherwise the url launcher will not function.
+  void _launchURL(String url) async {
+    if (url.isNotEmpty) {
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'https://' + url;
+      }
+      final Uri uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        print('Could not launch $url');
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +52,13 @@ class CollegeDetailsScreen extends StatelessWidget {
               ),
               SizedBox(height: 10),
               Text("Location: ${college["school.city"] ?? "N/A"}, ${college["school.state"] ?? "N/A"}, ${college["school.zip"] ?? "N/A"}"),
-              Text("Website: ${college["school.school_url"] ?? "N/A"}"),
+              GestureDetector(
+                onTap: () => _launchURL(college["school.school_url"] ?? ""),
+                child: Text(
+                  "Website: ${college["school.school_url"] ?? "N/A"}",
+                  style: TextStyle(color: Colors.blue, decoration: TextDecoration.underline),
+                ),
+              ),
               Text("In-State Tuition: \$${college["latest.cost.tuition.in_state"] ?? "N/A"}"),
               Text("Out-of-State Tuition: \$${college["latest.cost.tuition.out_of_state"] ?? "N/A"}"),
               Text("Admission Rate: ${(college["latest.admissions.admission_rate.overall"] != null) ? (college["latest.admissions.admission_rate.overall"] * 100).toStringAsFixed(2) + '%' : 'Data not available'}"),
@@ -62,9 +84,9 @@ class CollegeDetailsScreen extends StatelessWidget {
               SizedBox(height: 20),
               ElevatedButton(
                 onPressed: () {
-                  
+                  Navigator.pop(context);
                 },
-                child: Text("Save this college"),
+                child: Text("Back"),
               ),
             ],
           ),
