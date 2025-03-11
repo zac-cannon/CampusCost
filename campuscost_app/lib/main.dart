@@ -1,3 +1,4 @@
+import 'package:campuscost_app/screens/home_screen.dart';
 import 'package:campuscost_app/screens/saved_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -88,46 +89,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 class HomeTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final User? user = FirebaseAuth.instance.currentUser;
-
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            'Welcome to the Campus Cost: College Cost & Budget Planner!',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 18),
-          ),
-          SizedBox(height: 20),
-          user != null
-              ? Column(
-                  children: [
-                    Text("Logged in as: ${user.email}"),
-                    SizedBox(height: 10),
-                    ElevatedButton(
-                      onPressed: () async {
-                        await FirebaseAuth.instance.signOut();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text("Logged out")),
-                        );
-                      },
-                      child: Text("Logout"),
-                    ),
-                  ],
-                )
-              : ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => LoginScreen()),
-                    );
-                  },
-                  child: Text("Login / Sign Up"),
-                ),
-        ],
-      ),
-    );
+    return HomeScreenTab(); // Embed it directly inside the tab
   }
 }
 

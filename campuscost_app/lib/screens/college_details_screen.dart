@@ -105,7 +105,7 @@ class _CollegeDetailsScreenState extends State<CollegeDetailsScreen> {
                   IconButton(
                     icon: Icon(
                       isFavorite ? Icons.favorite : Icons.favorite_border,
-                      color: isFavorite ? Colors.red : null,
+                      color: isFavorite ? const Color.fromARGB(255, 109, 109, 109) : null,
                     ),
                     onPressed: _toggleFavorite,
                   ),
@@ -139,7 +139,7 @@ class _CollegeDetailsScreenState extends State<CollegeDetailsScreen> {
                     ),
                   );
                 },
-                child: Text("Plan Budget for this College"),
+                child: Text("Plan a Budget for this College"),
               ),
               SizedBox(height: 20),
               ElevatedButton(

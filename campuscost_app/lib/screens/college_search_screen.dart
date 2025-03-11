@@ -1,3 +1,4 @@
+import 'package:campuscost_app/screens/filters_screen.dart';
 import 'package:flutter/material.dart';
 import '../services/college_service.dart';
 import 'college_details_screen.dart';
@@ -10,7 +11,7 @@ class CollegeSearchScreen extends StatefulWidget {
 class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
   final TextEditingController _controller = TextEditingController();
   List<dynamic> _colleges = [];
-  Set<String> _favoriteIds = {}; // Keep track of fav colleg IDs
+  Set<String> _favoriteIds = {}; // Keep track of fav college IDs
   bool _isLoading = false;
 
   void _searchCollege() async {
@@ -73,7 +74,53 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
               ),
             ),
             SizedBox(height: 10),
-            ElevatedButton(onPressed: _searchCollege, child: Text("Search")),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 140,
+                  child: ElevatedButton(
+                    onPressed: _searchCollege,
+                    child: Text("Search"),
+                  ),
+                ),
+                SizedBox(
+                  width: 20,
+                ),
+                SizedBox(
+                  width: 140,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => CollegeFiltersScreen()),
+                      );
+                      //FILTERING:
+                      if (result != null && result is Map) {
+                        final maxTuition = result['maxTuition'];
+                        final isPublic = result['isPublic'];
+                        final isPrivate = result['isPrivate'];
+                        print("Selected Max Tuition: $maxTuition");
+                        setState(() {
+                          _colleges = _colleges.where((college) {
+                            final tuition = college["latest.cost.tuition.in_state"] ?? 0;
+                            final ownership = college["school.ownership"];
+                            final matchesTuition = tuition <= maxTuition;
+                            //1 = Public, 2 = Nonprofit private 3 = For profit private
+                            final matchesOwnership = (isPublic && ownership == 1) || (isPrivate && (ownership == 2 || ownership == 3));
+                            return matchesTuition && matchesOwnership;
+                          }).toList();
+                        });
+                      }
+                    },
+                    child: Text("Filters"),
+                  ),
+                ),
+              ],
+            ),
+
+
+
             SizedBox(height: 20),
             _isLoading
                 ? CircularProgressIndicator()
