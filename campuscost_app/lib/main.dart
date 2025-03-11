@@ -1,8 +1,11 @@
+import 'package:campuscost_app/screens/saved_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'screens/college_search_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'screens/login_screen.dart';
 
 
 Future<void> main() async {
@@ -85,8 +88,45 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 class HomeTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final User? user = FirebaseAuth.instance.currentUser;
+
     return Center(
-      child: Text('Welcome to the Campus Cost: College Cost & Budget Planner!'),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            'Welcome to the Campus Cost: College Cost & Budget Planner!',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 18),
+          ),
+          SizedBox(height: 20),
+          user != null
+              ? Column(
+                  children: [
+                    Text("Logged in as: ${user.email}"),
+                    SizedBox(height: 10),
+                    ElevatedButton(
+                      onPressed: () async {
+                        await FirebaseAuth.instance.signOut();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text("Logged out")),
+                        );
+                      },
+                      child: Text("Logout"),
+                    ),
+                  ],
+                )
+              : ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => LoginScreen()),
+                    );
+                  },
+                  child: Text("Login / Sign Up"),
+                ),
+        ],
+      ),
     );
   }
 }
@@ -101,7 +141,7 @@ class CollegeSearchTab extends StatelessWidget {
 class BudgetPlannerTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Center(child: Text('saved colleges and budgets view'));
+    return SavedCollegesScreen();
   }
 }
 
