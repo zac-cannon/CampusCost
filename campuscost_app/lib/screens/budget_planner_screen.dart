@@ -109,7 +109,7 @@ class _BudgetPlannerScreenState extends State<BudgetPlannerScreen> {
                   ],
                 ),
                 Divider(height: 30),
-                Text("Estimated Costs", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text("Estimated Annual Costs", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 _buildLabeledText("Tuition", "\$${tuition.toStringAsFixed(2)}"),
                 _buildLabeledText("Housing", housing > 0 ? "\$${housing.toStringAsFixed(2)}" : "N/A"),
                 _buildLabeledText("Books & Supplies", books > 0 ? "\$${books.toStringAsFixed(2)}" : "N/A"),

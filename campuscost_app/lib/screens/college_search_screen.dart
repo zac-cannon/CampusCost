@@ -13,6 +13,10 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
   List<dynamic> _colleges = [];
   Set<String> _favoriteIds = {}; // Keep track of fav college IDs
   bool _isLoading = false;
+  int _selectedMaxTuition = 100000;
+  bool _selectedIsPublic = true;
+  bool _selectedIsPrivate = true;
+
 
   void _searchCollege() async {
     setState(() {
@@ -93,21 +97,30 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
                     onPressed: () async {
                       final result = await Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => CollegeFiltersScreen()),
+                        MaterialPageRoute(
+                          builder: (_) => CollegeFiltersScreen(
+                            initialMaxTuition: _selectedMaxTuition,
+                            initialIsPublic: _selectedIsPublic,
+                            initialIsPrivate: _selectedIsPrivate,
+                          ),
+                        ),
                       );
-                      //FILTERING:
+
                       if (result != null && result is Map) {
-                        final maxTuition = result['maxTuition'];
-                        final isPublic = result['isPublic'];
-                        final isPrivate = result['isPrivate'];
-                        print("Selected Max Tuition: $maxTuition");
+                        _selectedMaxTuition = result['maxTuition'];
+                        _selectedIsPublic = result['isPublic'];
+                        _selectedIsPrivate = result['isPrivate'];
+
+                        print("Selected Max Tuition: $_selectedMaxTuition");
+
                         setState(() {
                           _colleges = _colleges.where((college) {
                             final tuition = college["latest.cost.tuition.in_state"] ?? 0;
                             final ownership = college["school.ownership"];
-                            final matchesTuition = tuition <= maxTuition;
-                            //1 = Public, 2 = Nonprofit private 3 = For profit private
-                            final matchesOwnership = (isPublic && ownership == 1) || (isPrivate && (ownership == 2 || ownership == 3));
+                            final matchesTuition = tuition <= _selectedMaxTuition;
+                            final matchesOwnership =
+                                (_selectedIsPublic && ownership == 1) ||
+                                (_selectedIsPrivate && (ownership == 2 || ownership == 3));
                             return matchesTuition && matchesOwnership;
                           }).toList();
                         });

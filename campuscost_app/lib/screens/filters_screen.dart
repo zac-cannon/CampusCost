@@ -1,14 +1,33 @@
 import 'package:flutter/material.dart';
 
 class CollegeFiltersScreen extends StatefulWidget {
+  final int initialMaxTuition;
+  final bool initialIsPublic;
+  final bool initialIsPrivate;
+
+  CollegeFiltersScreen({
+    this.initialMaxTuition = 100000,
+    this.initialIsPublic = true,
+    this.initialIsPrivate = true,
+  });
+
   @override
+
   _CollegeFiltersScreenState createState() => _CollegeFiltersScreenState();
 }
 
 class _CollegeFiltersScreenState extends State<CollegeFiltersScreen> {
-  double _tuitionRange = 100000; // Default max tuition filter
-  bool _isPublic = true;
-  bool _isPrivate = true;
+  late double _tuitionRange;
+  late bool _isPublic;
+  late bool _isPrivate;
+
+  @override
+  void initState() {
+    super.initState();
+    _tuitionRange = widget.initialMaxTuition.toDouble();
+    _isPublic = widget.initialIsPublic;
+    _isPrivate = widget.initialIsPrivate;
+  }
 
   @override
   Widget build(BuildContext context) {

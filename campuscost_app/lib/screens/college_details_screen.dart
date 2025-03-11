@@ -82,7 +82,8 @@ class _CollegeDetailsScreenState extends State<CollegeDetailsScreen> {
     double? retentionRate = widget.college["latest.student.retention_rate"] ??
         widget.college["latest.student.retention_rate.four_year.full_time"] ??
         widget.college["latest.student.retention_rate_suppressed.four_year.full_time_pooled"];
-
+    
+    int? studentSize = widget.college["latest.student.size"];
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.college["school.name"] ?? "College Details"),
@@ -125,6 +126,7 @@ class _CollegeDetailsScreenState extends State<CollegeDetailsScreen> {
               Text("Admission Rate: ${(widget.college["latest.admissions.admission_rate.overall"] != null) ? (widget.college["latest.admissions.admission_rate.overall"] * 100).toStringAsFixed(2) + '%' : 'Data not available'}"),
               Text("Graduation Rate: ${graduationRate != null ? (graduationRate * 100).toStringAsFixed(2) + '%' : 'Not reported'}"),
               Text("Retention Rate: ${retentionRate != null ? (retentionRate * 100).toStringAsFixed(2) + '%' : 'Not reported'}"),
+              Text("Student Enrollment Size: ${studentSize ?? "N/A"}"),
               Text("Median Earnings After 10 Years: \$${widget.college["latest.earnings.10_yrs_after_entry.median"] ?? "N/A"}"),
               Text("Students Receiving Pell Grants: ${(widget.college["latest.aid.pell_grant_rate"] != null) ? (widget.college["latest.aid.pell_grant_rate"] * 100).toStringAsFixed(2) + '%' : 'Data not available'}"),
               Text("Carnegie Classification: ${widget.college["school.carnegie_basic"] ?? "N/A"}"),

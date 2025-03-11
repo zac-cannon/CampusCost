@@ -16,7 +16,7 @@ class HomeScreenTab extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                'Welcome to the Campus Cost: College Cost & Budget Planner!',
+                'Welcome to Campus Cost: The College Comparison & Budget Planner Tool!',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 18),
               ),
