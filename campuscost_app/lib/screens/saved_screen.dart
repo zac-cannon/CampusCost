@@ -47,12 +47,16 @@ class _SavedCollegesScreenState extends State<SavedCollegesScreen> {
               icon: Icon(Icons.delete, color: Colors.red),
               onPressed: () => _removeFavorite(college["id"].toString()),
             ),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => CollegeDetailsScreen(college: college),
-              ),
-            ),
+            onTap: () async {
+              final fullCollegeData = await CollegeService.fetchCollegeById(college["id"].toString());
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => CollegeDetailsScreen(college: fullCollegeData),
+                ),
+              );
+            },
+
           ),
         );
       },

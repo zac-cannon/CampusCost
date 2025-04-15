@@ -1,4 +1,7 @@
+import 'package:campuscost_app/services/college_service.dart';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 
 class BudgetPlannerScreen extends StatefulWidget {
   final Map<String, dynamic>? college;
@@ -24,12 +27,15 @@ class _BudgetPlannerScreenState extends State<BudgetPlannerScreen> {
   double remainingCost = 0.0;
   double monthlyLoanPayment = 0.0;
   bool isInState = false;
+  bool hasSavedBudget = false;
 
   @override
   void initState() {
     super.initState();
     _prefillCollegeCosts();
+    loadSavedBudget(); // 👈 Add this
   }
+
 
   void _prefillCollegeCosts() {
     if (widget.college != null) {
@@ -38,12 +44,33 @@ class _BudgetPlannerScreenState extends State<BudgetPlannerScreen> {
             ? widget.college!["latest.cost.tuition.out_of_state"]?.toDouble() ?? 0.0
             : widget.college!["latest.cost.tuition.in_state"]?.toDouble() ?? 0.0;
         housing = widget.college!["latest.cost.roomboard.oncampus"]?.toDouble() ?? 0.0;
-        books = widget.college!["latest.cost.books_supplies"]?.toDouble() ?? 0.0;
+        books = widget.college!["latest.cost.booksupply"]?.toDouble() ?? 0.0;
         otherExpenses = widget.college!["latest.cost.other_expenses_oncampus"]?.toDouble() ?? 0.0;
         totalCost = tuition + housing + books + otherExpenses;
       });
     }
   }
+  void loadSavedBudget() async {
+    if (widget.college == null) return;
+
+    final collegeId = widget.college!['id'].toString();
+    final savedBudget = await FavoriteService.fetchBudget(collegeId);
+
+    if (savedBudget != null) {
+      setState(() {
+        hasSavedBudget = true;
+        tuition = (savedBudget['tuition'] ?? tuition).toDouble();
+        housing = (savedBudget['housing'] ?? housing).toDouble();
+        books = (savedBudget['books'] ?? books).toDouble();
+        otherExpenses = (savedBudget['otherExpenses'] ?? otherExpenses).toDouble();
+        additionalExpenses = (savedBudget['additionalExpenses'] ?? additionalExpenses).toDouble();
+        totalCost = (savedBudget['totalCost'] ?? totalCost).toDouble();
+        remainingCost = (savedBudget['remainingCost'] ?? remainingCost).toDouble();
+        monthlyLoanPayment = (savedBudget['monthlyLoanPayment'] ?? monthlyLoanPayment).toDouble();
+      });
+    }
+  }
+
 
   void _calculateBudget() {
     double scholarships = double.tryParse(_scholarshipsController.text) ?? 0.0;
@@ -81,7 +108,36 @@ class _BudgetPlannerScreenState extends State<BudgetPlannerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Budget Planner')),
+      appBar: AppBar(
+        title: Text('Budget Planner'),
+        actions: [
+          Tooltip(
+            message: 'Clear Budget',
+            child: IconButton(
+              icon: Icon(Icons.delete_outline),
+              onPressed: () async {
+                final collegeId = widget.college!['id'].toString();
+                await FavoriteService.removeBudget(collegeId);
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("Budget cleared")),
+                );
+
+                setState(() {
+                  _prefillCollegeCosts(); // ← Reset to API defaults
+                  _scholarshipsController.clear();
+                  _efcController.clear();
+                  _loansController.clear();
+                  _additionalExpensesController.clear();
+                  totalCost = tuition + housing + books + otherExpenses;
+                  remainingCost = 0.0;
+                  monthlyLoanPayment = 0.0;
+                });
+              },
+            ),
+          ),
+        ],
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 36.0, vertical: 24.0),
         child: Center(
@@ -151,10 +207,34 @@ class _BudgetPlannerScreenState extends State<BudgetPlannerScreen> {
                       child: Text("Calculate Budget", style: TextStyle(fontSize: 16)),
                     ),
                     ElevatedButton(
-                      onPressed: () {
-                        // TODO: implement save budget functionality
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Budget Saved (placeholder)")));
+                      onPressed: () async {
+                        if (widget.college == null) return;
+
+                        final collegeId = widget.college!['id'].toString();
+
+                        // Save minimal favorite info
+                        await FavoriteService.saveToFavorites(widget.college!);
+
+                        // Save budget separately
+                        final budgetData = {
+                          'tuition': tuition,
+                          'housing': housing,
+                          'books': books,
+                          'otherExpenses': otherExpenses,
+                          'additionalExpenses': additionalExpenses,
+                          'totalCost': totalCost,
+                          'remainingCost': remainingCost,
+                          'monthlyLoanPayment': monthlyLoanPayment,
+                          'timestamp': FieldValue.serverTimestamp(),
+                        };
+
+                        await FavoriteService.saveBudget(collegeId, budgetData);
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text("Budget saved")),
+                        );
                       },
+
                       style: ElevatedButton.styleFrom(padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14)),
                       child: Text("Save Budget", style: TextStyle(fontSize: 16)),
                     ),

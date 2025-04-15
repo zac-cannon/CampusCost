@@ -14,6 +14,7 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
   Set<String> _favoriteIds = {}; // Keep track of fav college IDs
   bool _isLoading = false;
   int _selectedMaxTuition = 100000;
+  double _selectedMinAcceptanceRate = 0;
   bool _selectedIsPublic = true;
   bool _selectedIsPrivate = true;
 
@@ -106,14 +107,18 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
                                 initialMaxTuition: _selectedMaxTuition,
                                 initialIsPublic: _selectedIsPublic,
                                 initialIsPrivate: _selectedIsPrivate,
+                                initialMinAcceptanceRate: _selectedMinAcceptanceRate,
                               ),
                             ),
                           );
+
                           //FILTERING:
                           if (result != null && result is Map) {
                             _selectedMaxTuition = result['maxTuition'];
                             _selectedIsPublic = result['isPublic'];
                             _selectedIsPrivate = result['isPrivate'];
+                            _selectedMinAcceptanceRate = result['minAcceptanceRate'] ?? 0.0;
+
 
                             print("Selected Max Tuition: $_selectedMaxTuition");
 
@@ -125,7 +130,11 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
                                 final matchesTuition = tuition <= _selectedMaxTuition;
                                 final matchesOwnership = // 1 = Public, 2/3 = (For/non Profit) Private
                                     (_selectedIsPublic && ownership == 1) || (_selectedIsPrivate && (ownership == 2 || ownership == 3));
-                                return matchesTuition && matchesOwnership;
+                                final acceptanceRate = college["latest.admissions.admission_rate.overall"] ?? 0.0;
+
+                                final matchesAcceptance = acceptanceRate >= _selectedMinAcceptanceRate;
+
+                                return matchesTuition && matchesOwnership && matchesAcceptance;
                               }).toList();
                             });
                           }

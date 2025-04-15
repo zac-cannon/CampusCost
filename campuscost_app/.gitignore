@@ -53,3 +53,4 @@ macos/Runner/GoogleService-Info.plist
 
 #API Key
 lib/services/college_service.dart
+web/index.html
