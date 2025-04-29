@@ -42,6 +42,15 @@ class _CollegeDetailsScreenState extends State<CollegeDetailsScreen> {
 
   void _toggleFavorite() async {
     final collegeId = widget.college['id'].toString();
+    final user = FirebaseAuth.instance.currentUser;
+
+
+    if (user == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("You must be logged in to save favorites.")),
+    );
+    return; // Stop here if not logged in
+  }
 
     if (isFavorite) {
       await FavoriteService.removeFromFavorites(collegeId);
@@ -197,7 +206,7 @@ Widget _buildCollegeDetails() {
         ),
       SizedBox(height: 24),
 
-      // 🎓 Overview
+      // Overview
       _section("🎓 Overview", [
         _infoRow("Average Net Cost", formatMoney(college["latest.cost.avg_net_price.overall"])),
         _infoRow("Admission Rate", formatPercent(college["latest.admissions.admission_rate.overall"])),
@@ -205,7 +214,7 @@ Widget _buildCollegeDetails() {
         _infoRow("School Type", describeOwnership(college["school.ownership"])),
       ]),
 
-      // 💰 Tuition & Costs
+      // Tuition & Costs
       _section("💰 Tuition & Costs", [
         _infoRow("In-State Tuition", formatMoney(college["latest.cost.tuition.in_state"])),
         _infoRow("Out-of-State Tuition", formatMoney(college["latest.cost.tuition.out_of_state"])),
@@ -214,7 +223,7 @@ Widget _buildCollegeDetails() {
         _infoRow("Other Expenses", formatMoney(college["latest.cost.other_expenses_oncampus"])),
       ]),
 
-      // 📈 Academics & Outcomes
+      //Academics & Outcomes
       _section("📈 Academics & Outcomes", [
         _infoRow("Graduation Rate", formatPercent(college["latest.completion.rate_suppressed.overall"])),
         _infoRow("Retention Rate", formatPercent(college["latest.student.retention_rate.overall.full_time"])),
@@ -224,13 +233,13 @@ Widget _buildCollegeDetails() {
 
       ]),
 
-      // 🎯 Financial Aid
+      // Financial Aid
       _section("🎯 Financial Aid", [
         _infoRow("Pell Grant Recipients", formatPercent(college["latest.aid.pell_grant_rate"])),
         _infoRow("Undergrads Receiving Federal Loans", formatPercent(college["latest.aid.fed_loan_rate"])),
       ]),
 
-      // 🧩 Misc
+      // Misc
       _section("🧩 Misc", [
         _infoRow("Accrediting Agency", college["school.accreditor"] ?? "N/A"),
         _infoRow("Carnegie Classification", college["school.carnegie_basic"]?.toString() ?? "N/A"),

@@ -124,7 +124,7 @@ class _BudgetPlannerScreenState extends State<BudgetPlannerScreen> {
                 );
 
                 setState(() {
-                  _prefillCollegeCosts(); // ← Reset to API defaults
+                  _prefillCollegeCosts(); // Reset to API defaults
                   _scholarshipsController.clear();
                   _efcController.clear();
                   _loansController.clear();
@@ -243,7 +243,7 @@ class _BudgetPlannerScreenState extends State<BudgetPlannerScreen> {
                         Navigator.pop(context);
                       },
                       style: ElevatedButton.styleFrom(padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14)),
-                      child: Text("Cancel", style: TextStyle(fontSize: 16, color: const Color.fromARGB(255, 116, 0, 0))),
+                      child: Text("Cancel", style: TextStyle(fontSize: 16, color: const Color.fromARGB(255, 255, 255, 255))),
                     ),
                   ],
                 ),
