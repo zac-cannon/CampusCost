@@ -1,0 +1,110 @@
+import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+class SettingsScreen extends StatelessWidget {
+  const SettingsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("Settings"),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          if (user != null) ...[
+            ListTile(
+              title: Text("Account"),
+              subtitle: Text(user.email ?? ""),
+              leading: Icon(Icons.person),
+            ),
+            Divider(),
+          ],
+
+          ListTile(
+            title: Text("Preferred State"),
+            subtitle: Text("Set default search state (coming soon)"),
+            leading: Icon(Icons.map_outlined),
+            onTap: () {},
+          ),
+          ListTile(
+            title: Text("Default Degree Type"),
+            subtitle: Text("4-Year or 2-Year (coming soon)"),
+            leading: Icon(Icons.school_outlined),
+            onTap: () {},
+          ),
+          Divider(),
+
+          ListTile(
+            title: Text("Export Saved Colleges"),
+            leading: Icon(Icons.download_outlined),
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text("Export feature coming soon!")),
+              );
+            },
+          ),
+          ListTile(
+            title: Text("Clear All Saved Colleges"),
+            leading: Icon(Icons.delete_outline),
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text("Clear function coming soon!")),
+              );
+            },
+          ),
+          ListTile(
+            title: Text("Clear All Budget Plans"),
+            leading: Icon(Icons.money_off_csred_outlined),
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text("Budget reset coming soon!")),
+              );
+            },
+          ),
+          Divider(),
+
+          ListTile(
+            title: Text("What is Campus Cost?"),
+            leading: Icon(Icons.info_outline),
+            onTap: () {
+              showDialog(
+                context: context,
+                builder: (_) => AlertDialog(
+                  title: Text("About Campus Cost"),
+                  content: Text("Campus Cost helps students compare college costs and plan budgets."),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text("Close"),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          Divider(),
+
+          if (user != null)
+            ElevatedButton.icon(
+              icon: Icon(Icons.logout),
+              label: Text("Log Out"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () async {
+                await FirebaseAuth.instance.signOut();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("You have been logged out.")),
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+}

@@ -9,6 +9,8 @@ class CollegeTile extends StatelessWidget {
   final VoidCallback onFavoriteToggle;
   final VoidCallback onTap;
   final bool isSelected;
+  final Widget? customTrailing;
+
 
   const CollegeTile({
     Key? key,
@@ -17,6 +19,7 @@ class CollegeTile extends StatelessWidget {
     required this.onFavoriteToggle,
     required this.onTap,
     this.isSelected = false,
+    this.customTrailing,
   }) : super(key: key);
 
   String formatMoney(dynamic value) {
@@ -133,13 +136,15 @@ class CollegeTile extends StatelessWidget {
           ),
         ),
 
-        trailing: IconButton(
-          icon: Icon(
-            isFavorite ? Icons.favorite : Icons.favorite_border,
-            color: Colors.grey.shade800,
+        trailing: customTrailing ??
+          IconButton(
+            icon: Icon(
+              isFavorite ? Icons.favorite : Icons.favorite_border,
+              color: Colors.grey.shade800,
+            ),
+            onPressed: onFavoriteToggle,
           ),
-          onPressed: onFavoriteToggle,
-        ),
+
       ),
     );
   }

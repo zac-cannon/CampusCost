@@ -1,5 +1,6 @@
 import 'package:campuscost_app/screens/home_screen.dart';
 import 'package:campuscost_app/screens/saved_screen.dart';
+import 'package:campuscost_app/screens/settings_screen';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -64,12 +65,14 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  final List<Widget> _pages = [
-    HomeScreenTab(),
-    CollegeSearchScreen(),
-    SavedCollegesScreen(),
-    Center(child: Text("Settings Coming Soon")),
-  ];
+  List<Widget> get _pages => [
+  HomeScreen(onSearchTabRequested: () {
+    _tabController.animateTo(1);
+  }),
+  CollegeSearchScreen(),
+  SavedCollegesScreen(),
+  SettingsScreen(),
+];
 
   final List<Tab> _tabs = [
   Tab(
@@ -98,7 +101,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
       children: [
         Icon(Icons.favorite),
         SizedBox(width: 8),
-        Text("Saved"),
+        Text("Saved Colleges"),
       ],
     ),
   ),
@@ -108,7 +111,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
       children: [
         Icon(Icons.settings),
         SizedBox(width: 8),
-        Text("Settings"),
+        Text("User Preferences"),
       ],
     ),
   ),
