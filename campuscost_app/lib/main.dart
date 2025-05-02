@@ -61,8 +61,8 @@ class AppShell extends StatefulWidget {
   _AppShellState createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
-  int _selectedIndex = 1; // Default to College Search
+class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
 
   final List<Widget> _pages = [
     HomeScreenTab(),
@@ -71,87 +71,136 @@ class _AppShellState extends State<AppShell> {
     Center(child: Text("Settings Coming Soon")),
   ];
 
-  final List<String> _titles = [
-    "Home",
-    "College Search",
-    "Saved Colleges",
-    "Settings",
-  ];
+  final List<Tab> _tabs = [
+  Tab(
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.home),
+        SizedBox(width: 8),
+        Text("Home"),
+      ],
+    ),
+  ),
+  Tab(
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.search),
+        SizedBox(width: 8),
+        Text("Search"),
+      ],
+    ),
+  ),
+  Tab(
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.favorite),
+        SizedBox(width: 8),
+        Text("Saved"),
+      ],
+    ),
+  ),
+  Tab(
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.settings),
+        SizedBox(width: 8),
+        Text("Settings"),
+      ],
+    ),
+  ),
+];
 
-  void _onItemSelected(int index) {
-    setState(() => _selectedIndex = index);
-    Navigator.pop(context);
-  }
 
-  void _openLogin() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => LoginScreen()),
-    );
+  @override
+void initState() {
+  super.initState();
+  _tabController = TabController(length: _tabs.length, vsync: this);
+
+  //Force a rebuild when tab animation completes to fix indicator glitch
+  _tabController.animation?.addListener(() {
+    setState(() {});
+  });
+}
+
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_titles[_selectedIndex]),
-        actions: [
-          StreamBuilder<User?>(
-            stream: FirebaseAuth.instance.authStateChanges(),
-            builder: (context, snapshot) {
-              final user = snapshot.data;
-
-              return Padding(
-                padding: const EdgeInsets.only(right: 12),
-                child: user != null
-                    ? Row(
-                        children: [
-                          Text(user.email ?? "User"),
-                          SizedBox(width: 10),
-                          IconButton(
-                            tooltip: "Logout",
-                            icon: Icon(Icons.logout),
-                            onPressed: () async {
-                              await FirebaseAuth.instance.signOut();
-                            },
-                          ),
-                        ],
-                      )
-                    : TextButton(
-                        onPressed: _openLogin,
-                        child: Text("Login / Signup", style: TextStyle(color: Colors.white)),
-                      ),
-              );
-            },
-          ),
-        ],
-      ),
-
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
+        titleSpacing: 12,
+        title: Row(
           children: [
-            DrawerHeader(
-              decoration: BoxDecoration(color: Colors.blue),
-              child: Text('Campus Cost', style: TextStyle(fontSize: 24, color: Colors.white)),
+            Text("Campus Cost", style: TextStyle(fontSize: 20)),
+            SizedBox(width: 24),
+            Expanded(
+              child:TabBar(
+                controller: _tabController,
+                isScrollable: true,
+                indicatorColor: Colors.white,
+                indicatorWeight: 3, // thin underline
+                labelPadding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                labelStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.white70,
+                tabs: _tabs,
+              )
+
+
             ),
-            _buildDrawerItem(icon: Icons.home, label: 'Home', index: 0),
-            _buildDrawerItem(icon: Icons.search, label: 'College Search', index: 1),
-            _buildDrawerItem(icon: Icons.favorite, label: 'Saved Colleges', index: 2),
-            _buildDrawerItem(icon: Icons.settings, label: 'Settings', index: 3),
+            SizedBox(width: 16),
+            StreamBuilder<User?>(
+              stream: FirebaseAuth.instance.authStateChanges(),
+              builder: (context, snapshot) {
+                final user = snapshot.data;
+
+                if (user != null) {
+                  return Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(user.email ?? "", style: TextStyle(fontSize: 14, color: Colors.white)),
+                      SizedBox(width: 8),
+                      IconButton(
+                        tooltip: "Logout",
+                        icon: Icon(Icons.logout, color: Colors.white),
+                        onPressed: () async {
+                          await FirebaseAuth.instance.signOut();
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Logged out")));
+                        },
+                      ),
+                    ],
+                  );
+                } else {
+                  return TextButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => LoginScreen()),
+                      );
+                    },
+                    child: Text("Login / Signup", style: TextStyle(color: Colors.white)),
+                  );
+                }
+              },
+            ),
+
           ],
         ),
+        automaticallyImplyLeading: false,
       ),
-      body: _pages[_selectedIndex],
-    );
-  }
-
-  Widget _buildDrawerItem({required IconData icon, required String label, required int index}) {
-    return ListTile(
-      leading: Icon(icon),
-      title: Text(label),
-      selected: _selectedIndex == index,
-      onTap: () => _onItemSelected(index),
+      body: TabBarView(
+        controller: _tabController,
+        children: _pages,
+      ),
     );
   }
 }

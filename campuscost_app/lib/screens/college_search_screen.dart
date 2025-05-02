@@ -250,61 +250,97 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
 
  Widget _buildListView() {
   if (_controller.text.isEmpty && _colleges.isEmpty) {
-  return Center(
-    child: Text(
-      "Start by searching for a college!",
-      style: TextStyle(fontSize: 18, color: Colors.grey),
-    ),
-  );
+    return Center(
+      child: Text(
+        "Start by searching for a college!",
+        style: TextStyle(fontSize: 18, color: Colors.grey),
+      ),
+    );
   } else if (_controller.text.isNotEmpty && _colleges.isEmpty) {
-  return Center(
-    child: Text(
-      "No colleges found.\nTry adjusting your search or filters.",
-      textAlign: TextAlign.center,
-      style: TextStyle(fontSize: 18, color: const Color.fromARGB(255, 72, 71, 71)),
-    ),
-  );
+    return Center(
+      child: Text(
+        "No colleges found.\nTry adjusting your search or filters.",
+        textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 18, color: Color.fromARGB(255, 72, 71, 71)),
+      ),
+    );
   }
 
+  if (_isMapView) {
+    // Return the scrollable vertical list as before (for side panel)
     return ListView.builder(
-    controller: _scrollController,
-    itemCount: _colleges.length,
-    itemBuilder: (context, index) {
-      final college = _colleges[index];
-      final collegeId = college['id'].toString();
-      final isFavorite = _favoriteIds.contains(collegeId);
+      controller: _scrollController,
+      itemCount: _colleges.length,
+      itemBuilder: (context, index) {
+        final college = _colleges[index];
+        final collegeId = college['id'].toString();
+        final isFavorite = _favoriteIds.contains(collegeId);
 
-      return CollegeTile(
-        college: college,
-        isFavorite: isFavorite,
-        isSelected: _selectedCollegeId == collegeId,
-        onFavoriteToggle: () => _toggleFavorite(college),
-        onTap: () async {
-        // First update selected ID
-        setState(() {
-          _selectedCollegeId = collegeId;
-        });
+        return CollegeTile(
+          college: college,
+          isFavorite: isFavorite,
+          isSelected: _selectedCollegeId == collegeId,
+          onFavoriteToggle: () => _toggleFavorite(college),
+          onTap: () async {
+            setState(() {
+              _selectedCollegeId = collegeId;
+            });
 
-        // Then perform camera animation
-        final selected = _colleges.firstWhere((c) => c['id'].toString() == collegeId);
-        final lat = selected["location.lat"];
-        final lon = selected["location.lon"];
+            final lat = college["location.lat"];
+            final lon = college["location.lon"];
+            if (lat != null && lon != null && _mapController != null) {
+              try {
+                await _mapController!.animateCamera(
+                  CameraUpdate.newLatLngZoom(LatLng(lat, lon), 8),
+                );
+              } catch (e) {
+                print('animateCamera failed: $e');
+              }
+            }
+          },
+        );
+      },
+    );
+  } else {
+    // Return a grid for non-map view
+    return GridView.builder(
+      padding: const EdgeInsets.all(12),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 3 / 1.5, // Width / Height ratio
+      ),
+      itemCount: _colleges.length,
+      itemBuilder: (context, index) {
+        final college = _colleges[index];
+        final collegeId = college['id'].toString();
+        final isFavorite = _favoriteIds.contains(collegeId);
 
-        if (lat != null && lon != null && _mapController != null) {
-          try {
-            await _mapController!.animateCamera(
-              CameraUpdate.newLatLngZoom(LatLng(lat, lon), 8),
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            return SizedBox(
+              height: 175,
+              child: CollegeTile(
+                college: college,
+                isFavorite: isFavorite,
+                isSelected: _selectedCollegeId == collegeId,
+                onFavoriteToggle: () => _toggleFavorite(college),
+                onTap: () {
+                  setState(() {
+                    _selectedCollegeId = collegeId;
+                  });
+                },
+              ),
             );
-          } catch (e) {
-            print('animateCamera failed: $e');
-          }
-        }
-      }
-      );
-    },
-  );
+          },
+        );
+      },
+    );
 
   }
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -318,11 +354,38 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
               children: [
                 TextField(
                   controller: _controller,
+                  onSubmitted: (_) => _searchCollege(), // Enter key triggers search
                   decoration: InputDecoration(
-                    labelText: "Enter college name",
-                    border: OutlineInputBorder(),
+                    hintText: "Enter college name",
+                    prefixIcon: Icon(Icons.search, color: Colors.grey.shade700),
+                    suffixIcon: _controller.text.isNotEmpty
+                        ? IconButton(
+                            icon: Icon(Icons.clear, color: Colors.grey.shade700),
+                            onPressed: () {
+                              setState(() {
+                                _controller.clear();
+                              });
+                            },
+                          )
+                        : null,
+                    contentPadding: EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
+                    ),
                   ),
                 ),
+
                 SizedBox(height: 10),
 
                 // Buttons for search and filter
