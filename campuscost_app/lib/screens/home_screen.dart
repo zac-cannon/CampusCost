@@ -1,9 +1,52 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   final VoidCallback onSearchTabRequested;
   const HomeScreen({super.key, required this.onSearchTabRequested});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  int savedCollegeCount = 0;
+  int budgetCount = 0;
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchCounts();
+  }
+
+  Future<void> _fetchCounts() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      final favoritesSnap = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('favorites')
+          .get();
+
+      final budgetsSnap = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('budgets')
+          .get();
+
+      setState(() {
+        savedCollegeCount = favoritesSnap.docs.length;
+        budgetCount = budgetsSnap.docs.length;
+        isLoading = false;
+      });
+    } catch (e) {
+      print('Error fetching counts: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,12 +92,14 @@ class HomeScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: Colors.grey.shade300),
                   ),
-                  child: Column(
-                    children: [
-                      Text('📌 Saved Colleges: Loading...', style: TextStyle(fontSize: 16)),
-                      Text('💰 Budgets Created: Coming soon...', style: TextStyle(fontSize: 16)),
-                    ],
-                  ),
+                  child: isLoading
+                      ? CircularProgressIndicator()
+                      : Column(
+                          children: [
+                            Text('📌  Saved Colleges: $savedCollegeCount', style: TextStyle(fontSize: 16)),
+                            Text('💰 Budgets Created: $budgetCount', style: TextStyle(fontSize: 16)),
+                          ],
+                        ),
                 ),
               ],
               SizedBox(height: 40),
@@ -68,7 +113,7 @@ class HomeScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                onPressed: onSearchTabRequested,
+                onPressed: widget.onSearchTabRequested,
               ),
             ],
           ),

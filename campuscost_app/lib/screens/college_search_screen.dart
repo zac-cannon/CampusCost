@@ -5,6 +5,7 @@ import '../services/college_service.dart';
 import 'college_details_screen.dart';
 import '../widgets/college_tile.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart' show Uint8List, rootBundle;
 import 'dart:ui' as ui;
 import 'dart:typed_data';
@@ -42,11 +43,20 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
   GoogleMapController? _mapController;
   final ScrollController _scrollController = ScrollController();
 
+  final List<String> _usStates = [
+    '', 'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS',
+    'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC',
+    'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY'
+  ];
+
+
   @override
   void initState() {
     super.initState();
-    _loadMarkerIcons(); 
+    _loadMarkerIcons();
+    _loadSavedFilters();
   }
+
 
   Future<void> _loadMarkerIcons() async {
     final ByteData blueData = await rootBundle.load('assets/bluemarker.png');
@@ -62,14 +72,41 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
   }
 
   void _searchCollege() async {
+
+  //warning check before starting the search
+    final collegeName = _controller.text.trim();
+
+    if (collegeName.isEmpty && _selectedState.isEmpty) {
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text("Warning"),
+          content: Text("Searching without a college name or state may take over a minute to load.\nDo you want to continue?"),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text("Continue"),
+            ),
+          ],
+        ),
+      );
+
+      if (proceed != true) return; // Don't proceed unless confirmed
+    }
+
     setState(() {
       _isLoading = true;
     });
 
     try {
-      final results = _selectedState.isNotEmpty
-        ? await CollegeService.fetchCollegesByState(_selectedState)
-        : await CollegeService.fetchColleges(_controller.text);
+      final results = await CollegeService.fetchColleges(
+        collegeName: _controller.text.trim(),
+        state: _selectedState,
+      );
 
       final favorites = await FavoriteService.fetchFavorites();
 
@@ -86,6 +123,30 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
       _isLoading = false;
     });
   }
+  Future<void> _loadSavedFilters() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('preferences')
+        .doc('filters')
+        .get();
+
+    if (doc.exists) {
+      final prefs = doc.data()!;
+      setState(() {
+        _selectedMaxTuition = (prefs['maxNetCost'] ?? 100000).toInt();
+        _selectedIsPublic = prefs['isPublic'] ?? true;
+        _selectedIsPrivate = prefs['isPrivate'] ?? true;
+        _selectedMinAcceptanceRate = (prefs['minAcceptanceRate'] ?? 0.0).toDouble();
+        _selectedState = prefs['state'] ?? '';
+        _selectedDegreeTypes = List<int>.from(prefs['degreeTypes'] ?? [1, 2, 3]);
+      });
+    }
+  }
+
   //Call the 'Favorite Service' to add/remove a college from favorites
   Future<void> _toggleFavorite(Map<String, dynamic> college) async {
     final collegeId = college['id'].toString();
@@ -352,40 +413,76 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
             constraints: BoxConstraints(maxWidth: 1200),
             child: Column(
               children: [
-                TextField(
-                  controller: _controller,
-                  onSubmitted: (_) => _searchCollege(), // Enter key triggers search
-                  decoration: InputDecoration(
-                    hintText: "Enter college name",
-                    prefixIcon: Icon(Icons.search, color: Colors.grey.shade700),
-                    suffixIcon: _controller.text.isNotEmpty
-                        ? IconButton(
-                            icon: Icon(Icons.clear, color: Colors.grey.shade700),
-                            onPressed: () {
-                              setState(() {
-                                _controller.clear();
-                              });
-                            },
-                          )
-                        : null,
-                    contentPadding: EdgeInsets.symmetric(vertical: 14, horizontal: 20),
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: TextField(
+                        controller: _controller,
+                        onSubmitted: (_) => _searchCollege(), // Enter key triggers search
+                        decoration: InputDecoration(
+                          hintText: "Enter college name",
+                          prefixIcon: Icon(Icons.search, color: Colors.grey.shade700),
+                          suffixIcon: _controller.text.isNotEmpty
+                              ? IconButton(
+                                  icon: Icon(Icons.clear, color: Colors.grey.shade700),
+                                  onPressed: () {
+                                    setState(() {
+                                      _controller.clear();
+                                    });
+                                  },
+                                )
+                              : null,
+                          contentPadding: EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Colors.grey.shade300),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Colors.grey.shade300),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
+                          ),
+                        ),
+                      ),
                     ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
-                    ),
-                  ),
-                ),
+                    SizedBox(width: 16),
 
+                    // State dropdown
+                    Container(
+                      width: 140,
+                      height: 48,
+                      padding: EdgeInsets.symmetric(horizontal: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          isExpanded: true,
+                          value: _selectedState.isNotEmpty ? _selectedState : null,
+                          icon: Icon(Icons.location_on, color: Colors.grey.shade700),
+                          hint: Text("Select State"),
+                          items: _usStates.map((state) {
+                            return DropdownMenuItem<String>(
+                              value: state,
+                              child: Text(state.isEmpty ? "Any" : state),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            setState(() => _selectedState = value ?? '');
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
                 SizedBox(height: 10),
 
                 // Buttons for search and filter
@@ -431,14 +528,16 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
                             setState(() => _isLoading = true);
 
                             try {
-                              final results = _selectedState.isNotEmpty
-                                  ? await CollegeService.fetchCollegesByState(_selectedState)
-                                  : await CollegeService.fetchColleges(_controller.text);
+                              final results = await CollegeService.fetchColleges(
+                                collegeName: _controller.text.trim(),
+                                state: _selectedState,
+                              );
 
                               final filtered = results.where((college) {
-                                final tuition = college["latest.cost.tuition.in_state"] ?? 0;
+                                final netCost = college["latest.cost.avg_net_price.overall"] ?? 0;
+                                final matchesNetCost = netCost <= _selectedMaxTuition;
+
                                 final ownership = college["school.ownership"];
-                                final matchesTuition = tuition <= _selectedMaxTuition;
                                 final degreeType = college["school.degrees_awarded.predominant"];
 
                                 final matchesOwnership =
@@ -448,7 +547,7 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
                                 final matchesAcceptance = acceptanceRate >= _selectedMinAcceptanceRate;
                                 final matchesDegreeType = _selectedDegreeTypes.contains(degreeType);
 
-                                return matchesTuition && matchesOwnership && matchesAcceptance && matchesDegreeType;
+                                return matchesNetCost && matchesOwnership && matchesAcceptance && matchesDegreeType;
                               }).toList();
 
                               final favorites = await FavoriteService.fetchFavorites();
