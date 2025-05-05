@@ -305,7 +305,7 @@ Widget _buildCollegeDetails() {
           IconButton(
             icon: Icon(
               isFavorite ? Icons.favorite : Icons.favorite_border,
-              color: isFavorite ? Colors.redAccent : Colors.white,
+              color: isFavorite ? const Color.fromARGB(255, 45, 45, 45) : Colors.white,
             ),
             onPressed: _toggleFavorite,
           ),

@@ -42,6 +42,7 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
   bool _markersLoaded = false;
   GoogleMapController? _mapController;
   final ScrollController _scrollController = ScrollController();
+  late Map<String, dynamic> _loadedFilterSnapshot;
 
   final List<String> _usStates = [
     '', 'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS',
@@ -58,6 +59,86 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
   }
 
 
+  Future<Map<String, dynamic>> _refreshFiltersIfChanged() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return _currentFilterState(); // fallback to current if user not logged in
+
+    final prefsDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('preferences')
+        .doc('filters')
+        .get();
+
+    if (prefsDoc.exists) {
+      final prefs = prefsDoc.data()!;
+      final updated = {
+        'maxNetCost': (prefs['maxNetCost'] ?? 100000).toInt(),
+        'isPublic': prefs['isPublic'] ?? true,
+        'isPrivate': prefs['isPrivate'] ?? true,
+        'minAcceptanceRate': (prefs['minAcceptanceRate'] ?? 0.0).toDouble(),
+        'state': prefs['state'] ?? '',
+        'degreeTypes': List<int>.from(prefs['degreeTypes'] ?? [1, 2, 3]),
+      };
+
+      if (updated.toString() != _loadedFilterSnapshot.toString()) {
+        setState(() {
+          _selectedMaxTuition = updated['maxNetCost'];
+          _selectedIsPublic = updated['isPublic'];
+          _selectedIsPrivate = updated['isPrivate'];
+          _selectedMinAcceptanceRate = updated['minAcceptanceRate'];
+          _selectedState = updated['state'];
+          _selectedDegreeTypes = updated['degreeTypes'];
+          _loadedFilterSnapshot = updated;
+        });
+      }
+
+      return updated;
+    }
+
+    return _currentFilterState(); // fallback if no saved filters
+  }
+
+
+
+  Map<String, dynamic> _currentFilterState() {
+    return {
+      'maxNetCost': _selectedMaxTuition,
+      'isPublic': _selectedIsPublic,
+      'isPrivate': _selectedIsPrivate,
+      'minAcceptanceRate': _selectedMinAcceptanceRate,
+      'state': _selectedState,
+      'degreeTypes': _selectedDegreeTypes,
+    };
+  }
+
+  Future<bool> _warningCheck() async {
+  final collegeName = _controller.text.trim();
+  if (collegeName.isEmpty && _selectedState.isEmpty) {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("Warning"),
+        content: Text("Searching without a college name or state may take over a minute to load.\nDo you want to continue?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text("Continue"),
+          ),
+        ],
+      ),
+    );
+    return result == true;
+  }
+  return true;
+}
+
+
+
   Future<void> _loadMarkerIcons() async {
     final ByteData blueData = await rootBundle.load('assets/bluemarker.png');
     final Uint8List blueBytes = blueData.buffer.asUint8List();
@@ -72,31 +153,11 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
   }
 
   void _searchCollege() async {
-
+    
   //warning check before starting the search
-    final collegeName = _controller.text.trim();
-
-    if (collegeName.isEmpty && _selectedState.isEmpty) {
-      final proceed = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text("Warning"),
-          content: Text("Searching without a college name or state may take over a minute to load.\nDo you want to continue?"),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: Text("Cancel"),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: Text("Continue"),
-            ),
-          ],
-        ),
-      );
-
-      if (proceed != true) return; // Don't proceed unless confirmed
-    }
+    final shouldProceed = await _warningCheck();
+    if (!shouldProceed) return;
+    //final filters = await _refreshFiltersIfChanged();
 
     setState(() {
       _isLoading = true;
@@ -107,11 +168,39 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
         collegeName: _controller.text.trim(),
         state: _selectedState,
       );
+      final filtersAreDefault = _selectedMaxTuition == 100000 &&
+        _selectedIsPublic == true &&
+        _selectedIsPrivate == true &&
+        _selectedMinAcceptanceRate == 0 &&
+        (_selectedState.isEmpty) &&
+        _selectedDegreeTypes.length == 3 &&
+        _selectedDegreeTypes.contains(1) &&
+        _selectedDegreeTypes.contains(2) &&
+        _selectedDegreeTypes.contains(3);
+
+    final List<dynamic> finalList = filtersAreDefault
+        ? results
+        : results.where((college) {
+            final netCost = college["latest.cost.avg_net_price.overall"] ?? 0;
+            final ownership = college["school.ownership"];
+            final acceptanceRate = college["latest.admissions.admission_rate.overall"] ?? 0.0;
+            final degreeType = college["school.degrees_awarded.predominant"];
+
+            final matchesNetCost = netCost <= _selectedMaxTuition;
+            final matchesOwnership =
+                (_selectedIsPublic && ownership == 1) ||
+                (_selectedIsPrivate && (ownership == 2 || ownership == 3));
+            final matchesAcceptance = acceptanceRate >= _selectedMinAcceptanceRate;
+            final matchesDegreeType = _selectedDegreeTypes.contains(degreeType);
+
+            return matchesNetCost && matchesOwnership && matchesAcceptance && matchesDegreeType;
+          }).toList();
+
 
       final favorites = await FavoriteService.fetchFavorites();
 
       setState(() {
-        _colleges = results;
+        _colleges = finalList;
         _favoriteIds = favorites.map((c) => c['id'].toString()).toSet(); 
       });
     } catch (e) {
@@ -124,6 +213,7 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
     });
   }
   Future<void> _loadSavedFilters() async {
+    
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
 
@@ -133,7 +223,7 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
         .collection('preferences')
         .doc('filters')
         .get();
-
+      
     if (doc.exists) {
       final prefs = doc.data()!;
       setState(() {
@@ -143,6 +233,9 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
         _selectedMinAcceptanceRate = (prefs['minAcceptanceRate'] ?? 0.0).toDouble();
         _selectedState = prefs['state'] ?? '';
         _selectedDegreeTypes = List<int>.from(prefs['degreeTypes'] ?? [1, 2, 3]);
+
+        _loadedFilterSnapshot = _currentFilterState(); // ← Save snapshot
+
       });
     }
   }
@@ -191,8 +284,6 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
     if (lat == null || lon == null) return null;
 
     final isSelected = _selectedCollegeId == id;
-    print("Marker: ${college["school.name"]}, isSelected: $isSelected");
-
     return Marker(
       markerId: MarkerId(isSelected ? 'selected-$id' : 'default-$id'),
       position: LatLng(lat, lon),
@@ -523,7 +614,8 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
                             _selectedState = result['state'] ?? '';
                             _selectedDegreeTypes = List<int>.from(result['degreeTypes'] ?? [1, 2, 3]);
 
-
+                            final shouldProceed = await _warningCheck();
+                            if (!shouldProceed) return;
 
                             setState(() => _isLoading = true);
 
