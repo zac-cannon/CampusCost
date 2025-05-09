@@ -1,18 +1,23 @@
 import 'package:flutter/material.dart';
 
 class CollegeFiltersScreen extends StatefulWidget {
-  final int initialMaxTuition;
+  final int initialMaxNetCost;
+  final int initialMinNetCost;
   final bool initialIsPublic;
   final bool initialIsPrivate;
   final double initialMinAcceptanceRate;
+  final double initialMaxAcceptanceRate;
   final String initialState;
   final List<int> initialDegreeTypes;
 
+
   CollegeFiltersScreen({
-    this.initialMaxTuition = 100000,
+    this.initialMaxNetCost = 100000,
+    this.initialMinNetCost = 0,
     this.initialIsPublic = true,
     this.initialIsPrivate = true,
     this.initialMinAcceptanceRate = 0.0,
+    this.initialMaxAcceptanceRate = 1.0,
     this.initialState = '',
     this.initialDegreeTypes = const [1, 2, 3],
   });
@@ -22,10 +27,12 @@ class CollegeFiltersScreen extends StatefulWidget {
 }
 
 class _CollegeFiltersScreenState extends State<CollegeFiltersScreen> {
-  late double _tuitionRange;
+  late double _minNetCost;
+  late double _maxNetCost;
   late bool _isPublic;
   late bool _isPrivate;
   late double _minAcceptanceRate;
+  late double _maxAcceptanceRate;
   late String _selectedState;
   late List<int> _selectedDegreeTypes;
 
@@ -45,7 +52,8 @@ class _CollegeFiltersScreenState extends State<CollegeFiltersScreen> {
 
   void _clearAllFilters() {
     setState(() {
-      _tuitionRange = 100000;
+      _maxNetCost = 100000;
+      _minNetCost = 0;
       _isPublic = true;
       _isPrivate = true;
       _minAcceptanceRate = 0.0;
@@ -57,10 +65,12 @@ class _CollegeFiltersScreenState extends State<CollegeFiltersScreen> {
   @override
   void initState() {
     super.initState();
-    _tuitionRange = widget.initialMaxTuition.toDouble();
+    _maxNetCost = widget.initialMaxNetCost.toDouble();
+    _minNetCost = widget.initialMinNetCost.toDouble();
     _isPublic = widget.initialIsPublic;
     _isPrivate = widget.initialIsPrivate;
     _minAcceptanceRate = widget.initialMinAcceptanceRate;
+    _maxAcceptanceRate = widget.initialMaxAcceptanceRate;
     _selectedState = widget.initialState;
     _selectedDegreeTypes = List.from(widget.initialDegreeTypes);
   }
@@ -88,18 +98,23 @@ class _CollegeFiltersScreenState extends State<CollegeFiltersScreen> {
               ListView(
                 padding: const EdgeInsets.all(16.0),
                 children: [
-                  _buildSection(title: "\uD83C\uDF93 Maximum Net Cost", child: Column(
+                  _buildSection(title: "\uD83C\uDF93 Net Cost", child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text("\$${_tuitionRange.toInt()}",
+                      Text("\$${_minNetCost.toInt()} - \$${_maxNetCost.toInt()}",
                           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                      Slider(
-                        value: _tuitionRange,
+                      RangeSlider(
+                        values: RangeValues(_minNetCost, _maxNetCost),
                         min: 0,
                         max: 100000,
                         divisions: 100,
-                        label: _tuitionRange.toInt().toString(),
-                        onChanged: (value) => setState(() => _tuitionRange = value),
+                        labels: RangeLabels("\$${_minNetCost.toInt()}", "\$${_maxNetCost.toInt()}"),
+                        onChanged: (values) {
+                          setState(() {
+                            _minNetCost = values.start;
+                            _maxNetCost = values.end;
+                          });
+                        },
                       ),
                     ],
                   )),
@@ -139,18 +154,26 @@ class _CollegeFiltersScreenState extends State<CollegeFiltersScreen> {
                     ],
                   )),
 
-                  _buildSection(title: "\u2705 Min Acceptance Rate", child: Column(
+                  _buildSection(title: "\u2705 Acceptance Rate", child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text("${(_minAcceptanceRate * 100).toInt()}%",
+                      Text("${(_minAcceptanceRate * 100).toInt()}% - ${(_maxAcceptanceRate * 100).toInt()}%",
                           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                      Slider(
-                        value: _minAcceptanceRate,
+                      RangeSlider(
+                        values: RangeValues(_minAcceptanceRate, _maxAcceptanceRate),
                         min: 0.0,
                         max: 1.0,
                         divisions: 20,
-                        label: "${(_minAcceptanceRate * 100).toInt()}%",
-                        onChanged: (value) => setState(() => _minAcceptanceRate = value),
+                        labels: RangeLabels(
+                          "${(_minAcceptanceRate * 100).toInt()}%",
+                          "${(_maxAcceptanceRate * 100).toInt()}%",
+                        ),
+                        onChanged: (values) {
+                          setState(() {
+                            _minAcceptanceRate = values.start;
+                            _maxAcceptanceRate = values.end;
+                          });
+                        },
                       ),
                     ],
                   )),
@@ -184,10 +207,12 @@ class _CollegeFiltersScreenState extends State<CollegeFiltersScreen> {
                 child: ElevatedButton.icon(
                   onPressed: () {
                     Navigator.pop(context, {
-                      'maxTuition': _tuitionRange.toInt(),
+                      'minNetCost': _minNetCost.toInt(),
+                      'maxNetCost': _maxNetCost.toInt(),
                       'isPublic': _isPublic,
                       'isPrivate': _isPrivate,
                       'minAcceptanceRate': _minAcceptanceRate,
+                      'maxAcceptanceRate': _maxAcceptanceRate,
                       'state': _selectedState,
                       'degreeTypes': _selectedDegreeTypes,
                     });

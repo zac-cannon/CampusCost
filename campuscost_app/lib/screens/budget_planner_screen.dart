@@ -34,6 +34,7 @@ class _BudgetPlannerScreenState extends State<BudgetPlannerScreen> {
   double monthlyLoanPayment = 0.0;
   bool isInState = false;
   bool hasSavedBudget = false;
+  bool hasCalculated = false;
 
   @override
   void initState() {
@@ -114,6 +115,7 @@ class _BudgetPlannerScreenState extends State<BudgetPlannerScreen> {
       totalCost = tuition + housing + books + additionalExpenses;
       remainingCost = (totalCost - (scholarships + efc + loans + studentIncome)).clamp(0, double.infinity);
       monthlyLoanPayment = ((loans * 4) / 120) * 1.05;
+      hasCalculated = true;
     });
   }
 
@@ -419,6 +421,13 @@ void _showEditCostsDialog() {
                         children: [
                           ElevatedButton(onPressed: _calculateBudget, style: ElevatedButton.styleFrom(padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14)), child: Text("Calculate Budget", style: TextStyle(fontSize: 16))),
                           ElevatedButton(onPressed: () async {
+                            final user = FirebaseAuth.instance.currentUser;
+                            if (user == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text("You must be logged in to save a budget.")),
+                              );
+                              return;
+  }
                             if (widget.college == null) return;
                             final collegeId = widget.college!['id'].toString();
                             await FavoriteService.saveToFavorites(widget.college!);
@@ -484,8 +493,12 @@ void _showEditCostsDialog() {
                               SizedBox(height: 12),
                               _buildLabeledText("Total Cost\n(Per Year)", "\$${totalCost.toStringAsFixed(2)}"),
                               _buildLabeledText("Total Cost\n(4 Years)", "\$${(totalCost * 4).toStringAsFixed(2)}"),
-                              _buildLabeledText("Remaining Cost\n(Per Year)", remainingCost == 0 ? "Fully Covered" : "\$${remainingCost.toStringAsFixed(2)}"),
-                              _buildLabeledText("Remaining Cost\n(4 Years)", remainingCost == 0 ? "Fully Covered" : "\$${(remainingCost * 4).toStringAsFixed(2)}"),
+                              _buildLabeledText("Remaining Cost\n(Per Year)", hasCalculated
+                                ? (remainingCost == 0 ? "Fully Covered" : "\$${remainingCost.toStringAsFixed(2)}")
+                                : ""),
+                              _buildLabeledText("Remaining Cost\n(4 Years)", hasCalculated
+                                ? (remainingCost == 0 ? "Fully Covered" : "\$${(remainingCost * 4).toStringAsFixed(2)}")
+                                : ""),
                               _buildLabeledText("Monthly Loan Payment", "\$${monthlyLoanPayment.toStringAsFixed(2)}"),
                               Text("(Based on 10-year term at ~5% interest)", style: TextStyle(fontSize: 12, color: Colors.grey[600])),
                             ],

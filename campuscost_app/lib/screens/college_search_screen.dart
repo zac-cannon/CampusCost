@@ -29,7 +29,9 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
   List<dynamic> _colleges = [];
   Set<String> _favoriteIds = {}; // Keep track of fav college IDs
   bool _isLoading = false;
-  int _selectedMaxTuition = 100000;
+  int _selectedMinNetCost = 0;
+  int _selectedMaxNetCost= 100000;
+  double _selectedMaxAcceptanceRate = 1.0;
   double _selectedMinAcceptanceRate = 0;
   bool _selectedIsPublic = true;
   bool _selectedIsPrivate = true;
@@ -83,10 +85,12 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
 
       if (updated.toString() != _loadedFilterSnapshot.toString()) {
         setState(() {
-          _selectedMaxTuition = updated['maxNetCost'];
+          _selectedMaxNetCost = updated['maxNetCost'];
+          _selectedMinNetCost = updated['minNetCost'];
           _selectedIsPublic = updated['isPublic'];
           _selectedIsPrivate = updated['isPrivate'];
           _selectedMinAcceptanceRate = updated['minAcceptanceRate'];
+          _selectedMaxAcceptanceRate = updated['maxAcceptanceRate'];
           _selectedState = updated['state'];
           _selectedDegreeTypes = updated['degreeTypes'];
           _loadedFilterSnapshot = updated;
@@ -103,7 +107,8 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
 
   Map<String, dynamic> _currentFilterState() {
     return {
-      'maxNetCost': _selectedMaxTuition,
+      'maxNetCost': _selectedMaxNetCost,
+      'minNetCost': _selectedMinNetCost,
       'isPublic': _selectedIsPublic,
       'isPrivate': _selectedIsPrivate,
       'minAcceptanceRate': _selectedMinAcceptanceRate,
@@ -171,10 +176,12 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
         state: _selectedState,
       );
       //check if filters are default
-      final filtersAreDefault = _selectedMaxTuition == 100000 &&
+      final filtersAreDefault = _selectedMaxNetCost == 100000 &&
+        _selectedMinNetCost == 0 &&
         _selectedIsPublic == true &&
         _selectedIsPrivate == true &&
         _selectedMinAcceptanceRate == 0 &&
+        _selectedMaxAcceptanceRate == 1.0 &&
         (_selectedState.isEmpty) &&
         _selectedDegreeTypes.length == 3 &&
         _selectedDegreeTypes.contains(1) &&
@@ -189,11 +196,11 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
             final acceptanceRate = college["latest.admissions.admission_rate.overall"] ?? 0.0;
             final degreeType = college["school.degrees_awarded.predominant"];
 
-            final matchesNetCost = netCost <= _selectedMaxTuition;
+            final matchesNetCost = (netCost <= _selectedMaxNetCost) && (netCost >= _selectedMinNetCost);
             final matchesOwnership =
                 (_selectedIsPublic && ownership == 1) ||
                 (_selectedIsPrivate && (ownership == 2 || ownership == 3));
-            final matchesAcceptance = acceptanceRate >= _selectedMinAcceptanceRate;
+            final matchesAcceptance = (acceptanceRate >= _selectedMinAcceptanceRate) && (acceptanceRate <= _selectedMaxAcceptanceRate);
             final matchesDegreeType = _selectedDegreeTypes.contains(degreeType);
 
             return matchesNetCost && matchesOwnership && matchesAcceptance && matchesDegreeType;
@@ -229,14 +236,16 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
     if (doc.exists) {
       final prefs = doc.data()!;
       setState(() {
-        _selectedMaxTuition = (prefs['maxNetCost'] ?? 100000).toInt();
-        _selectedIsPublic = prefs['isPublic'] ?? true;
-        _selectedIsPrivate = prefs['isPrivate'] ?? true;
+        _selectedMinNetCost = (prefs['minNetCost'] ?? 0).toInt();
+        _selectedMaxNetCost = (prefs['maxNetCost'] ?? 100000).toInt();
         _selectedMinAcceptanceRate = (prefs['minAcceptanceRate'] ?? 0.0).toDouble();
+        _selectedMaxAcceptanceRate = (prefs['maxAcceptanceRate'] ?? 1.0).toDouble();
+        _selectedIsPublic = prefs['isPublic'] ?? true;
+        _selectedIsPrivate = prefs['isPrivate'] ?? true;        
         _selectedState = prefs['state'] ?? '';
         _selectedDegreeTypes = List<int>.from(prefs['degreeTypes'] ?? [1, 2, 3]);
 
-        _loadedFilterSnapshot = _currentFilterState(); // ← Save snapshot
+        _loadedFilterSnapshot = _currentFilterState(); // Save snapshot
 
       });
     }
@@ -613,10 +622,12 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
                             context,
                             MaterialPageRoute(
                               builder: (_) => CollegeFiltersScreen(
-                                initialMaxTuition: _selectedMaxTuition,
+                                initialMaxNetCost: _selectedMaxNetCost,
+                                initialMinNetCost: _selectedMinNetCost,
                                 initialIsPublic: _selectedIsPublic,
                                 initialIsPrivate: _selectedIsPrivate,
                                 initialMinAcceptanceRate: _selectedMinAcceptanceRate,
+                                initialMaxAcceptanceRate: _selectedMaxAcceptanceRate,
                                 initialState: _selectedState,
                                 initialDegreeTypes: _selectedDegreeTypes,
                               ),
@@ -624,9 +635,11 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
                           );
 
                           if (result != null && result is Map) {
-                            _selectedMaxTuition = result['maxTuition'];
+                            _selectedMinNetCost = result['minNetCost'];
+                            _selectedMaxNetCost = result['maxNetCost'];
                             _selectedIsPublic = result['isPublic'];
                             _selectedIsPrivate = result['isPrivate'];
+                            _selectedMaxAcceptanceRate = result['maxAcceptanceRate'] ?? 1.0;
                             _selectedMinAcceptanceRate = result['minAcceptanceRate'] ?? 0.0;
                             _selectedState = result['state'] ?? '';
                             _selectedDegreeTypes = List<int>.from(result['degreeTypes'] ?? [1, 2, 3]);
@@ -644,7 +657,7 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
 
                               final filtered = results.where((college) {
                                 final netCost = college["latest.cost.avg_net_price.overall"] ?? 0;
-                                final matchesNetCost = netCost <= _selectedMaxTuition;
+                                final matchesNetCost = (netCost <= _selectedMaxNetCost) && (netCost >= _selectedMinNetCost);
 
                                 final ownership = college["school.ownership"];
                                 final degreeType = college["school.degrees_awarded.predominant"];
@@ -653,7 +666,7 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
                                     (_selectedIsPublic && ownership == 1) ||
                                     (_selectedIsPrivate && (ownership == 2 || ownership == 3));
                                 final acceptanceRate = college["latest.admissions.admission_rate.overall"] ?? 0.0;
-                                final matchesAcceptance = acceptanceRate >= _selectedMinAcceptanceRate;
+                                final matchesAcceptance = (acceptanceRate >= _selectedMinAcceptanceRate) && (acceptanceRate <= _selectedMaxAcceptanceRate);
                                 final matchesDegreeType = _selectedDegreeTypes.contains(degreeType);
 
                                 return matchesNetCost && matchesOwnership && matchesAcceptance && matchesDegreeType;

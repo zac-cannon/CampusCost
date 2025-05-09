@@ -11,13 +11,17 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   double _maxNetCost = 100000;
+  double _minNetCost = 0;
   bool _isPublic = true;
   bool _isPrivate = true;
   double _minAcceptanceRate = 0.0;
+  double _maxAcceptanceRate = 1.0;
   String _selectedState = '';
   List<int> _selectedDegreeTypes = [1, 2, 3];
   String _defaultSort = 'tuition_low';
   bool _defaultMapView = true;
+  bool _isLoaded = false;
+
 
   double _defaultScholarships = 0;
   double _defaultEfc = 0;
@@ -38,6 +42,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _loadPreferences() async {
+    
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
 
@@ -51,9 +56,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final prefs = prefsDoc.data()!;
       setState(() {
         _maxNetCost = (prefs['maxNetCost'] ?? 100000).toDouble();
+        _minNetCost = (prefs['minNetCost'] ?? 0).toDouble();
         _isPublic = prefs['isPublic'] ?? true;
         _isPrivate = prefs['isPrivate'] ?? true;
         _minAcceptanceRate = (prefs['minAcceptanceRate'] ?? 0.0).toDouble();
+        _maxAcceptanceRate = (prefs['maxAcceptanceRate'] ?? 1.0).toDouble();
         _selectedState = prefs['state'] ?? '';
         _selectedDegreeTypes = List<int>.from(prefs['degreeTypes'] ?? [1, 2, 3]);
       });
@@ -77,6 +84,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _defaultAdditional = (b['additional'] ?? 0).toDouble();
       });
     }
+    setState(() {
+      _isLoaded = true;
+    });
   }
 
   Future<void> _savePreferences() async {
@@ -87,9 +97,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     await prefRef.doc('filters').set({
       'maxNetCost': _maxNetCost.toInt(),
+      'minNetCost': _minNetCost.toInt(),
       'isPublic': _isPublic,
       'isPrivate': _isPrivate,
       'minAcceptanceRate': _minAcceptanceRate,
+      'maxAcceptanceRate': _maxAcceptanceRate,
       'state': _selectedState,
       'degreeTypes': _selectedDegreeTypes,
     });
@@ -134,10 +146,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context,
       MaterialPageRoute(
         builder: (_) => CollegeFiltersScreen(
-          initialMaxTuition: _maxNetCost.toInt(),
+          initialMaxNetCost: _maxNetCost.toInt(),
+          initialMinNetCost: _minNetCost.toInt(),
           initialIsPublic: _isPublic,
           initialIsPrivate: _isPrivate,
           initialMinAcceptanceRate: _minAcceptanceRate,
+          initialMaxAcceptanceRate: _maxAcceptanceRate,
           initialState: _selectedState,
           initialDegreeTypes: _selectedDegreeTypes,
         ),
@@ -146,10 +160,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (result != null && result is Map) {
       setState(() {
-        _maxNetCost = result['maxTuition'].toDouble();
+        _maxNetCost = result['maxNetCost'].toDouble();
+        _minNetCost = result['minNetCost'].toDouble();
         _isPublic = result['isPublic'];
         _isPrivate = result['isPrivate'];
         _minAcceptanceRate = result['minAcceptanceRate'];
+        _maxAcceptanceRate = result['maxAcceptanceRate'];
         _selectedState = result['state'];
         _selectedDegreeTypes = List<int>.from(result['degreeTypes']);
       });
@@ -167,6 +183,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           style: TextStyle(fontSize: 18, color: Colors.black54),
         ),
       );
+    }
+
+    if (!_isLoaded) {
+    return Center(child: CircularProgressIndicator());
     }
 
     return Scaffold(
@@ -195,7 +215,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text("Default Budget Inputs", style: Theme.of(context).textTheme.titleMedium),
+                      Text("Default Budget Inputs", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                       SizedBox(height: 12),
                       _buildNumberField("Scholarships & Grants", _defaultScholarships, (val) => _defaultScholarships = val),
                       _buildNumberField("Family Contribution", _defaultEfc, (val) => _defaultEfc = val),
@@ -207,51 +227,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
 
-              Card(
-                margin: const EdgeInsets.only(bottom: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    children: [
-                      DropdownButtonFormField<String>(
-                        decoration: InputDecoration(labelText: "Sort Colleges By"),
-                        value: _defaultSort,
-                        items: _sortOptions.map((opt) => DropdownMenuItem(
-                          value: opt,
-                          child: Text(opt.replaceAll("_", " ").toUpperCase()),
-                        )).toList(),
-                        onChanged: (val) => setState(() => _defaultSort = val!),
-                      ),
-                      SwitchListTile(
-                        title: Text("Show Map View by Default"),
-                        subtitle: Text(_defaultMapView ? "Map View" : "Grid View"),
-                        value: _defaultMapView,
-                        onChanged: (val) => setState(() => _defaultMapView = val),
-                      ),
-                    ],
-                  ),
+              
+
+             Wrap(
+              spacing: 16,
+              runSpacing: 12,
+              alignment: WrapAlignment.center,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: _savePreferences,
+                  icon: Icon(Icons.save),
+                  label: Text("Save"),
                 ),
-              ),
+                ElevatedButton.icon(
+                  onPressed: _resetToDefault,
+                  icon: Icon(Icons.restore),
+                  label: Text("Reset"),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.grey.shade700),
+                ),
+              ],
+            ),
 
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: _savePreferences,
-                    icon: Icon(Icons.save),
-                    label: Text("Save"),
-                  ),
-                  ElevatedButton.icon(
-                    onPressed: _resetToDefault,
-                    icon: Icon(Icons.restore),
-                    label: Text("Reset"),
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.grey.shade700),
-                  ),
-                ],
-              ),
 
-              SizedBox(height: 32),
+              SizedBox(height: 152),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
