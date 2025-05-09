@@ -1,4 +1,5 @@
 import 'package:campuscost_app/services/college_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -38,7 +39,8 @@ class _BudgetPlannerScreenState extends State<BudgetPlannerScreen> {
   void initState() {
     super.initState();
     _prefillCollegeCosts();
-    loadSavedBudget();
+    loadSavedBudget().then((_) => loadDefaultsIfNeeded());
+
   }
 
   void _prefillCollegeCosts() {
@@ -53,8 +55,31 @@ class _BudgetPlannerScreenState extends State<BudgetPlannerScreen> {
       });
     }
   }
+  Future<void> loadDefaultsIfNeeded() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || widget.college == null) return;
 
-  void loadSavedBudget() async {
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('preferences')
+        .doc('budget')
+        .get();
+
+    if (!hasSavedBudget && doc.exists) {
+      final data = doc.data()!;
+      setState(() {
+        _scholarshipsController.text = (data['scholarships'] ?? 0).toString();
+        _efcController.text = (data['efc'] ?? 0).toString();
+        _loansController.text = (data['loans'] ?? 0).toString();
+        _studentIncomeController.text = (data['income'] ?? 0).toString();
+        _additionalExpensesController.text = (data['additional'] ?? 0).toString();
+      });
+    }
+  }
+
+
+  Future <void> loadSavedBudget() async {
     if (widget.college == null) return;
     final collegeId = widget.college!['id'].toString();
     final savedBudget = await FavoriteService.fetchBudget(collegeId);

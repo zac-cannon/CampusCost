@@ -111,34 +111,35 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
       'degreeTypes': _selectedDegreeTypes,
     };
   }
-
+// Check if a college name or state is entered in the search, 
+// warn the user of the long wait times if that is NOT the case
   Future<bool> _warningCheck() async {
-  final collegeName = _controller.text.trim();
-  if (collegeName.isEmpty && _selectedState.isEmpty) {
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text("Warning"),
-        content: Text("Searching without a college name or state may take over a minute to load.\nDo you want to continue?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text("Cancel"),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text("Continue"),
-          ),
-        ],
-      ),
-    );
-    return result == true;
+    final collegeName = _controller.text.trim();
+    if (collegeName.isEmpty && _selectedState.isEmpty) {
+      final result = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text("Warning"),
+          content: Text("Searching without a college name or state may take over a minute to load.\nDo you want to continue?"),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text("Continue"),
+            ),
+          ],
+        ),
+      );
+      return result == true;
+    }
+    return true;
   }
-  return true;
-}
 
 
-
+//Load the default (blue) marker icons and the highlighted/selected (red) marker icons
   Future<void> _loadMarkerIcons() async {
     final ByteData blueData = await rootBundle.load('assets/bluemarker.png');
     final Uint8List blueBytes = blueData.buffer.asUint8List();
@@ -151,7 +152,7 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
       _markersLoaded = true;
     });
   }
-
+// Search colleges with just default filters (by name AND/OR state)
   void _searchCollege() async {
     
   //warning check before starting the search
@@ -164,10 +165,12 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
     });
 
     try {
+      // Fetch colleges server side (filtered directly by API via name and/or state)
       final results = await CollegeService.fetchColleges(
         collegeName: _controller.text.trim(),
         state: _selectedState,
       );
+      //check if filters are default
       final filtersAreDefault = _selectedMaxTuition == 100000 &&
         _selectedIsPublic == true &&
         _selectedIsPrivate == true &&
@@ -179,8 +182,8 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
         _selectedDegreeTypes.contains(3);
 
     final List<dynamic> finalList = filtersAreDefault
-        ? results
-        : results.where((college) {
+        ? results //if filters default, fetch ALL colleges from server side filter (DO NOT FILTER CLIENT SIDE)
+        : results.where((college) { //if custom filters are applied, FILTER CLIENT SIDE
             final netCost = college["latest.cost.avg_net_price.overall"] ?? 0;
             final ownership = college["school.ownership"];
             final acceptanceRate = college["latest.admissions.admission_rate.overall"] ?? 0.0;
@@ -195,7 +198,6 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
 
             return matchesNetCost && matchesOwnership && matchesAcceptance && matchesDegreeType;
           }).toList();
-
 
       final favorites = await FavoriteService.fetchFavorites();
 
@@ -271,63 +273,67 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
       );
     }
   }
-  //Create google map with college pins
+  //Create the interactive map view with college pins
   Widget _buildMapView() {
+  //LOAD MARKERS:
    if (!_markersLoaded) {
       return Center(child: CircularProgressIndicator());
     }
+    //Gather college & location data 
     final markers = Set<Marker>.of(_colleges.map((college) {
     final lat = college["location.lat"];
     final lon = college["location.lon"];
     final id = college["id"].toString();
 
+    // will not display pin if location does not exist for a college
     if (lat == null || lon == null) return null;
 
     final isSelected = _selectedCollegeId == id;
     return Marker(
       markerId: MarkerId(isSelected ? 'selected-$id' : 'default-$id'),
       position: LatLng(lat, lon),
-      icon: isSelected ? _highlightMarker : _defaultMarker,
+      icon: isSelected ? _highlightMarker : _defaultMarker, // If selected, change marker icon
       zIndex: isSelected ? 2.0 : 1.0, // MOVE TO FRONT (selected marker)
-      onTap: () {
-      setState(() {
-        _selectedCollegeId = id;
-      });
-
-      final index = _colleges.indexWhere((c) => c['id'].toString() == id);
-      if (index != -1) {
-        _scrollController.animateTo(
-          index * 187.0, // Assuming each CollegeTile is ~187px tall
-          duration: Duration(milliseconds: 400),
-          curve: Curves.easeInOut,
-        );
-      }
-    },
-
-    // This triggers when user taps the info window (separate)
-    infoWindow: InfoWindow(
-      title: college["school.name"],
-      snippet: "(Click here to view details)",
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => CollegeDetailsScreen(college: college),
-          ),
-        );
+      onTap: () { // Assign selected college when user clicks on a pin
+        setState(() {
+          _selectedCollegeId = id;
+        });
+        // Scroll to college in list view when selected by pin:
+        final index = _colleges.indexWhere((c) => c['id'].toString() == id);
+        if (index != -1) {
+          _scrollController.animateTo(
+            index * 187.0, // Assuming each CollegeTile is ~187px tall
+            duration: Duration(milliseconds: 400),
+            curve: Curves.easeInOut,
+          );
+        }
       },
-    ),
-  );
+
+      //Open the college details screen if user clicks on pin info window
+      infoWindow: InfoWindow(
+        title: college["school.name"],
+        snippet: "(Click here to view details)",
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => CollegeDetailsScreen(college: college),
+            ),
+          );
+        },
+      ),
+    );
 
   }).whereType<Marker>());
 
-
+  //LOAD MAP:
     return GoogleMap(
       onMapCreated: (controller) {
         if (mounted) {
           _mapController = controller;
         }
       },
+      //Initial camera position is overview of USA
       initialCameraPosition: CameraPosition(
         target: LatLng(39.8283, -98.5795),
         zoom: 4.0,
@@ -350,26 +356,29 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
           children: [
             ListTile(
               leading: Icon(Icons.arrow_upward),
-              title: Text('Tuition: Low to High'),
+              title: Text('Net Cost: Low to High'),
               onTap: () {
                 setState(() {
                   _colleges.sort((a, b) =>
-                    (a["latest.cost.tuition.in_state"] ?? 0).compareTo(b["latest.cost.tuition.in_state"] ?? 0));
+                    (a["latest.cost.avg_net_price.overall"] ?? 999999)
+                        .compareTo(b["latest.cost.avg_net_price.overall"] ?? 999999));
                 });
                 Navigator.pop(context);
               },
             ),
             ListTile(
               leading: Icon(Icons.arrow_downward),
-              title: Text('Tuition: High to Low'),
+              title: Text('Net Cost: High to Low'),
               onTap: () {
                 setState(() {
                   _colleges.sort((a, b) =>
-                    (b["latest.cost.tuition.in_state"] ?? 0).compareTo(a["latest.cost.tuition.in_state"] ?? 0));
+                    (b["latest.cost.avg_net_price.overall"] ?? 0)
+                        .compareTo(a["latest.cost.avg_net_price.overall"] ?? 0));
                 });
                 Navigator.pop(context);
               },
             ),
+
             ListTile(
               leading: Icon(Icons.school),
               title: Text('Acceptance Rate'),
@@ -401,6 +410,7 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
 
 
  Widget _buildListView() {
+  //If no college has been searched, display text:
   if (_controller.text.isEmpty && _colleges.isEmpty) {
     return Center(
       child: Text(
@@ -408,6 +418,8 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
         style: TextStyle(fontSize: 18, color: Colors.grey),
       ),
     );
+
+  //If search could not find any colleges, display text:
   } else if (_controller.text.isNotEmpty && _colleges.isEmpty) {
     return Center(
       child: Text(
@@ -418,9 +430,10 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
     );
   }
 
-  if (_isMapView) {
-    // Return the scrollable vertical list as before (for side panel)
+  if (_isMapView) { // Build list in map view (list on side)
+    // Return the scrollable vertical list 
     return ListView.builder(
+      //build a list of colleges with college tile widget
       controller: _scrollController,
       itemCount: _colleges.length,
       itemBuilder: (context, index) {
@@ -440,6 +453,8 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
 
             final lat = college["location.lat"];
             final lon = college["location.lon"];
+            
+            //Animate the mapview camera to the new location when a college is selected
             if (lat != null && lon != null && _mapController != null) {
               try {
                 await _mapController!.animateCamera(
@@ -504,16 +519,18 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
             constraints: BoxConstraints(maxWidth: 1200),
             child: Column(
               children: [
-                Row(
+                Row( //College search box & state dropdown:
                   children: [
                     Expanded(
                       flex: 2,
+                      //College search box field:
                       child: TextField(
                         controller: _controller,
                         onSubmitted: (_) => _searchCollege(), // Enter key triggers search
                         decoration: InputDecoration(
                           hintText: "Enter college name",
                           prefixIcon: Icon(Icons.search, color: Colors.grey.shade700),
+                          //Clear text college search box field button:
                           suffixIcon: _controller.text.isNotEmpty
                               ? IconButton(
                                   icon: Icon(Icons.clear, color: Colors.grey.shade700),
@@ -544,7 +561,7 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
                     ),
                     SizedBox(width: 16),
 
-                    // State dropdown
+                    // State dropdown:
                     Container(
                       width: 140,
                       height: 48,
@@ -576,7 +593,7 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
                 ),
                 SizedBox(height: 10),
 
-                // Buttons for search and filter
+                // Buttons for search, filter, and sort
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -670,8 +687,9 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
                     ),
 
                     SizedBox(width: 20),
+                    // Map view/ Grid view toggle button:
                     Tooltip(
-                      message: _isMapView ? "Switch to List View" : "Switch to Map View",
+                      message: _isMapView ? "Switch to Grid View" : "Switch to Map View",
                       child: Row(
                         children: [
                           Icon(Icons.map),
@@ -756,7 +774,6 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
                           child: _buildListView(),
                         ),
                 ),
-
               ],
             ),
           ),

@@ -1,3 +1,4 @@
+// updated_settings_screen.dart
 import 'package:campuscost_app/screens/filters_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -16,10 +17,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _selectedState = '';
   List<int> _selectedDegreeTypes = [1, 2, 3];
   String _defaultSort = 'tuition_low';
+  bool _defaultMapView = true;
 
-  double _monthlyBudget = 0;
-  double _maxLoanAmount = 0;
-  double _targetLoanPayment = 0;
+  double _defaultScholarships = 0;
+  double _defaultEfc = 0;
+  double _defaultLoans = 0;
+  double _defaultIncome = 0;
+  double _defaultAdditional = 0;
 
   final List<String> _sortOptions = [
     'tuition_low',
@@ -37,26 +41,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
 
-    final prefsDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('preferences')
-        .doc('filters')
-        .get();
+    final prefRef = FirebaseFirestore.instance.collection('users').doc(uid).collection('preferences');
 
-    final sortDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('preferences')
-        .doc('display')
-        .get();
-
-    final budgetDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('preferences')
-        .doc('budget')
-        .get();
+    final prefsDoc = await prefRef.doc('filters').get();
+    final sortDoc = await prefRef.doc('display').get();
+    final budgetDoc = await prefRef.doc('budget').get();
 
     if (prefsDoc.exists) {
       final prefs = prefsDoc.data()!;
@@ -71,15 +60,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     if (sortDoc.exists) {
-      _defaultSort = sortDoc.data()!['sort'] ?? 'tuition_low';
+      final sort = sortDoc.data()!;
+      setState(() {
+        _defaultSort = sort['sort'] ?? 'tuition_low';
+        _defaultMapView = sort['mapView'] ?? true;
+      });
     }
 
     if (budgetDoc.exists) {
       final b = budgetDoc.data()!;
       setState(() {
-        _monthlyBudget = (b['monthlyBudget'] ?? 0).toDouble();
-        _maxLoanAmount = (b['maxLoan'] ?? 0).toDouble();
-        _targetLoanPayment = (b['targetLoanPayment'] ?? 0).toDouble();
+        _defaultScholarships = (b['scholarships'] ?? 0).toDouble();
+        _defaultEfc = (b['efc'] ?? 0).toDouble();
+        _defaultLoans = (b['loans'] ?? 0).toDouble();
+        _defaultIncome = (b['income'] ?? 0).toDouble();
+        _defaultAdditional = (b['additional'] ?? 0).toDouble();
       });
     }
   }
@@ -88,10 +83,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
 
-    final prefRef = FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('preferences');
+    final prefRef = FirebaseFirestore.instance.collection('users').doc(uid).collection('preferences');
 
     await prefRef.doc('filters').set({
       'maxNetCost': _maxNetCost.toInt(),
@@ -103,18 +95,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
 
     await prefRef.doc('display').set({
-      'sort': _defaultSort
+      'sort': _defaultSort,
+      'mapView': _defaultMapView,
     });
 
     await prefRef.doc('budget').set({
-      'monthlyBudget': _monthlyBudget,
-      'maxLoan': _maxLoanAmount,
-      'targetLoanPayment': _targetLoanPayment,
+      'scholarships': _defaultScholarships,
+      'efc': _defaultEfc,
+      'loans': _defaultLoans,
+      'income': _defaultIncome,
+      'additional': _defaultAdditional,
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Preferences saved")),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Preferences saved")));
   }
 
   void _resetToDefault() {
@@ -126,9 +119,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _selectedState = '';
       _selectedDegreeTypes = [1, 2, 3];
       _defaultSort = 'tuition_low';
-      _monthlyBudget = 0;
-      _maxLoanAmount = 0;
-      _targetLoanPayment = 0;
+      _defaultMapView = true;
+      _defaultScholarships = 0;
+      _defaultEfc = 0;
+      _defaultLoans = 0;
+      _defaultIncome = 0;
+      _defaultAdditional = 0;
     });
     _savePreferences();
   }
@@ -161,107 +157,156 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Widget _buildActionButton({required IconData icon, required String label, required VoidCallback onPressed, Color? color}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Center(
+  @override
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return Center(
+        child: Text(
+          "Please log in to view your preferences.",
+          style: TextStyle(fontSize: 18, color: Colors.black54),
+        ),
+      );
+    }
+
+    return Scaffold(
+      body: Center(
         child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: 300),
-          child: ElevatedButton.icon(
-            onPressed: onPressed,
-            icon: Icon(icon),
-            label: Text(label),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: color ?? Theme.of(context).primaryColor,
-              foregroundColor: Colors.white,
-              padding: EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
+          constraints: BoxConstraints(maxWidth: 800),
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              ElevatedButton.icon(
+                onPressed: _openFiltersScreen,
+                icon: Icon(Icons.tune),
+                label: Text("Edit Default Filters"),
+                style: ElevatedButton.styleFrom(
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  textStyle: TextStyle(fontSize: 16),
+                ),
+              ),
+              SizedBox(height: 16),
+
+              Card(
+                margin: const EdgeInsets.only(bottom: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("Default Budget Inputs", style: Theme.of(context).textTheme.titleMedium),
+                      SizedBox(height: 12),
+                      _buildNumberField("Scholarships & Grants", _defaultScholarships, (val) => _defaultScholarships = val),
+                      _buildNumberField("Family Contribution", _defaultEfc, (val) => _defaultEfc = val),
+                      _buildNumberField("Student Loans", _defaultLoans, (val) => _defaultLoans = val),
+                      _buildNumberField("Student Income", _defaultIncome, (val) => _defaultIncome = val),
+                      _buildNumberField("Additional Expenses", _defaultAdditional, (val) => _defaultAdditional = val),
+                    ],
+                  ),
+                ),
+              ),
+
+              Card(
+                margin: const EdgeInsets.only(bottom: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    children: [
+                      DropdownButtonFormField<String>(
+                        decoration: InputDecoration(labelText: "Sort Colleges By"),
+                        value: _defaultSort,
+                        items: _sortOptions.map((opt) => DropdownMenuItem(
+                          value: opt,
+                          child: Text(opt.replaceAll("_", " ").toUpperCase()),
+                        )).toList(),
+                        onChanged: (val) => setState(() => _defaultSort = val!),
+                      ),
+                      SwitchListTile(
+                        title: Text("Show Map View by Default"),
+                        subtitle: Text(_defaultMapView ? "Map View" : "Grid View"),
+                        value: _defaultMapView,
+                        onChanged: (val) => setState(() => _defaultMapView = val),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: _savePreferences,
+                    icon: Icon(Icons.save),
+                    label: Text("Save"),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: _resetToDefault,
+                    icon: Icon(Icons.restore),
+                    label: Text("Reset"),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.grey.shade700),
+                  ),
+                ],
+              ),
+
+              SizedBox(height: 32),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: () async {
+                      await FirebaseAuth.instance.signOut();
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Signed out")));
+                    },
+                    icon: Icon(Icons.logout),
+                    label: Text("Sign Out"),
+                    style: ElevatedButton.styleFrom(minimumSize: Size(150, 48)),
+                  ),
+                  SizedBox(width: 16),
+                  ElevatedButton.icon(
+                    onPressed: () async {
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                          title: Text("Delete Account"),
+                          content: Text("Are you sure? This cannot be undone."),
+                          actions: [
+                            TextButton(onPressed: () => Navigator.pop(context, false), child: Text("Cancel")),
+                            ElevatedButton(onPressed: () => Navigator.pop(context, true), child: Text("Delete")),
+                          ],
+                        ),
+                      );
+                      if (confirm == true) {
+                        await user.delete();
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Account deleted")));
+                      }
+                    },
+                    icon: Icon(Icons.delete_forever),
+                    label: Text("Delete Account"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.redAccent,
+                      minimumSize: Size(150, 48),
+                    ),
+                  )
+                ],
+              )
+            ],
           ),
         ),
       ),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-
-    return Scaffold(
-      body: Center(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: 600),
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              Text("User: ${user?.email ?? 'Not signed in'}"),
-              SizedBox(height: 24),
-
-              Text("Default Sort Option"),
-              DropdownButton<String>(
-                value: _defaultSort,
-                onChanged: (value) => setState(() => _defaultSort = value!),
-                items: [
-                  DropdownMenuItem(value: 'tuition_low', child: Text("Tuition: Low to High")),
-                  DropdownMenuItem(value: 'acceptance_high', child: Text("Acceptance Rate: High to Low")),
-                  DropdownMenuItem(value: 'student_size_large', child: Text("Student Size: Largest First")),
-                ],
-              ),
-
-              SizedBox(height: 24),
-              Text("Budgeting Preferences", style: Theme.of(context).textTheme.titleMedium),
-
-              TextField(
-                decoration: InputDecoration(labelText: "Monthly Budget (est.)"),
-                keyboardType: TextInputType.number,
-                onChanged: (value) => _monthlyBudget = double.tryParse(value) ?? 0,
-                controller: TextEditingController(text: _monthlyBudget.toStringAsFixed(0)),
-              ),
-              /*TextField(
-                decoration: InputDecoration(labelText: "Max Willing Loan Amount"),
-                keyboardType: TextInputType.number,
-                onChanged: (value) => _maxLoanAmount = double.tryParse(value) ?? 0,
-                controller: TextEditingController(text: _maxLoanAmount.toStringAsFixed(0)),
-              ),
-              TextField(
-                decoration: InputDecoration(labelText: "Target Monthly Loan Payment"),
-                keyboardType: TextInputType.number,
-                onChanged: (value) => _targetLoanPayment = double.tryParse(value) ?? 0,
-                controller: TextEditingController(text: _targetLoanPayment.toStringAsFixed(0)),
-              ),*/
-
-              SizedBox(height: 24),
-              _buildActionButton(icon: Icons.tune, label: "Edit Search Filters", onPressed: _openFiltersScreen),
-              _buildActionButton(icon: Icons.save, label: "Save Preferences", onPressed: _savePreferences),
-              _buildActionButton(icon: Icons.restore, label: "Reset to Default", onPressed: _resetToDefault, color: Colors.grey.shade700),
-              SizedBox(height: 32),
-
-              if (user != null) ...[
-                _buildActionButton(icon: Icons.logout, label: "Sign Out", onPressed: () async {
-                  await FirebaseAuth.instance.signOut();
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Signed out")));
-                }),
-                _buildActionButton(icon: Icons.delete_forever, label: "Delete Account", onPressed: () async {
-                  final confirm = await showDialog<bool>(
-                    context: context,
-                    builder: (_) => AlertDialog(
-                      title: Text("Delete Account"),
-                      content: Text("Are you sure? This cannot be undone."),
-                      actions: [
-                        TextButton(onPressed: () => Navigator.pop(context, false), child: Text("Cancel")),
-                        TextButton(onPressed: () => Navigator.pop(context, true), child: Text("Delete")),
-                      ],
-                    ),
-                  );
-                  if (confirm == true) {
-                    await user.delete();
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Account deleted")));
-                  }
-                }, color: Colors.red.shade700),
-              ],
-            ],
-          ),
-        ),
+  Widget _buildNumberField(String label, double initialValue, Function(double) onChanged) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6.0),
+      child: TextFormField(
+        decoration: InputDecoration(labelText: label),
+        initialValue: initialValue.toStringAsFixed(0),
+        keyboardType: TextInputType.number,
+        onChanged: (val) => onChanged(double.tryParse(val) ?? 0),
       ),
     );
   }
