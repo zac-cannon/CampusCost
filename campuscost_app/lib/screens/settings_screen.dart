@@ -29,12 +29,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   double _defaultIncome = 0;
   double _defaultAdditional = 0;
 
-  final List<String> _sortOptions = [
-    'tuition_low',
-    'acceptance_high',
-    'student_size_large'
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -132,6 +126,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _selectedDegreeTypes = [1, 2, 3];
       _defaultSort = 'tuition_low';
       _defaultMapView = true;
+      _defaultScholarships = 0;
+      _defaultEfc = 0;
+      _defaultLoans = 0;
+      _defaultIncome = 0;
+      _defaultAdditional = 0;
       _defaultScholarships = 0;
       _defaultEfc = 0;
       _defaultLoans = 0;
