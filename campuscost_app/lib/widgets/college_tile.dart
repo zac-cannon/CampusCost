@@ -1,4 +1,3 @@
-// lib/widgets/college_tile.dart
 import 'package:campuscost_app/screens/budget_planner_screen.dart';
 import 'package:flutter/material.dart';
 import '../screens/college_details_screen.dart';

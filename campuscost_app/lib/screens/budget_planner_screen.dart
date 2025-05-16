@@ -491,6 +491,7 @@ void _showEditCostsDialog() {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              // Display results:
                               Text("Results", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                               SizedBox(height: 12),
                               _buildLabeledText("Total Cost\n(Per Year)", "\$${totalCost.toStringAsFixed(2)}"),
