@@ -23,8 +23,7 @@ class _BudgetPlannerScreenState extends State<BudgetPlannerScreen> {
   final TextEditingController _booksController = TextEditingController();
   final TextEditingController _manualAdditionalExpensesController = TextEditingController();
 
-
-
+  // Budget values
   double tuition = 0.0;
   double housing = 0.0;
   double books = 0.0;
@@ -39,11 +38,12 @@ class _BudgetPlannerScreenState extends State<BudgetPlannerScreen> {
   @override
   void initState() {
     super.initState();
-    _prefillCollegeCosts();
-    loadSavedBudget().then((_) => loadDefaultsIfNeeded());
+    _prefillCollegeCosts(); //use college data if available
+    loadSavedBudget().then((_) => loadDefaultsIfNeeded()); //Try loading saved budget, if no saved budget exists fallback to user defaults.
 
   }
 
+//Fill in budget data based on selected college
   void _prefillCollegeCosts() {
     if (widget.college != null) {
       setState(() {
@@ -56,6 +56,7 @@ class _BudgetPlannerScreenState extends State<BudgetPlannerScreen> {
       });
     }
   }
+  //load defaults if no saved budget is available
   Future<void> loadDefaultsIfNeeded() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null || widget.college == null) return;
@@ -103,7 +104,7 @@ class _BudgetPlannerScreenState extends State<BudgetPlannerScreen> {
       });
     }
   }
-
+// Calculate totals and remaining cost after financial aid and incomes
   void _calculateBudget() {
     double scholarships = double.tryParse(_scholarshipsController.text) ?? 0.0;
     double efc = double.tryParse(_efcController.text) ?? 0.0;
@@ -119,6 +120,7 @@ class _BudgetPlannerScreenState extends State<BudgetPlannerScreen> {
     });
   }
 
+//toggle between in-state vs out-of-state tuition
   void _toggleTuition(bool value) {
     setState(() {
       isInState = value;

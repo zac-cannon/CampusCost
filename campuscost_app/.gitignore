@@ -51,6 +51,6 @@ ios/Runner/GoogleService-Info.plist
 firebase.json
 macos/Runner/GoogleService-Info.plist
 
-#API Key
-lib/services/college_service.dart
+#API Keys
+.env
 web/index.html

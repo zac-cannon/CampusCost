@@ -8,6 +8,7 @@ import 'firebase_options.dart';
 import 'screens/college_search_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'screens/login_screen.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 
 Future<void> main() async {
@@ -16,6 +17,7 @@ Future<void> main() async {
   FirebaseFirestore.instance.settings = const Settings(
     persistenceEnabled: true,
   );
+  await dotenv.load(fileName: ".env");
   runApp(MyApp());
 }
 

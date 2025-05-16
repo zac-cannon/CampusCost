@@ -300,7 +300,7 @@ Widget _buildCollegeDetails() {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.college["school.name"] ?? "College Details"),
+        title: Text("College Details"),
         actions: [
           IconButton(
             icon: Icon(

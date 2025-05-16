@@ -157,13 +157,12 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
       _markersLoaded = true;
     });
   }
-// Search colleges with just default filters (by name AND/OR state)
+// Main college search: starts with name AND/OR state based fetch from College Scorecard API
   void _searchCollege() async {
     
-  //warning check before starting the search
+  // Warn user if no college name or state is selected (to prevent unwanted long load times)
     final shouldProceed = await _warningCheck();
     if (!shouldProceed) return;
-    //final filters = await _refreshFiltersIfChanged();
 
     setState(() {
       _isLoading = true;
@@ -175,14 +174,13 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
         collegeName: _controller.text.trim(),
         state: _selectedState,
       );
-      //check if filters are default
+      // check if user is using default filters (no extra filtering applied)
       final filtersAreDefault = _selectedMaxNetCost == 100000 &&
         _selectedMinNetCost == 0 &&
         _selectedIsPublic == true &&
         _selectedIsPrivate == true &&
         _selectedMinAcceptanceRate == 0 &&
         _selectedMaxAcceptanceRate == 1.0 &&
-        (_selectedState.isEmpty) &&
         _selectedDegreeTypes.length == 3 &&
         _selectedDegreeTypes.contains(1) &&
         _selectedDegreeTypes.contains(2) &&
@@ -198,20 +196,25 @@ class _CollegeSearchScreenState extends State<CollegeSearchScreen> {
 
             final matchesNetCost = (netCost <= _selectedMaxNetCost) && (netCost >= _selectedMinNetCost);
             final matchesOwnership =
-                (_selectedIsPublic && ownership == 1) ||
-                (_selectedIsPrivate && (ownership == 2 || ownership == 3));
-            final matchesAcceptance = (acceptanceRate >= _selectedMinAcceptanceRate) && (acceptanceRate <= _selectedMaxAcceptanceRate);
+              (_selectedIsPublic && ownership == 1) || (_selectedIsPrivate && (ownership == 2 || ownership == 3));
+            final matchesAcceptance = 
+              (acceptanceRate >= _selectedMinAcceptanceRate) && (acceptanceRate <= _selectedMaxAcceptanceRate);
             final matchesDegreeType = _selectedDegreeTypes.contains(degreeType);
 
             return matchesNetCost && matchesOwnership && matchesAcceptance && matchesDegreeType;
           }).toList();
 
+      // Fetch the user's saved favorite colleges
       final favorites = await FavoriteService.fetchFavorites();
 
       setState(() {
+        // update the search results with final filters colleges
         _colleges = finalList;
+
+        // Convert list of favorite colleges into a set of their IDs for quick lookup
         _favoriteIds = favorites.map((c) => c['id'].toString()).toSet(); 
       });
+      
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Error fetching data. Please try again.")));
